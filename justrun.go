@@ -32,6 +32,9 @@ func usage() {
 }
 
 // TODO make container to clean up locking
+// TODO ignore more events by batching better
+// TODO fix [FILEPATH]*
+// TODO handle ignored directories
 func main() {
 	flag.Parse()
 	if *help {
