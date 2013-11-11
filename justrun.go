@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	help     = flag.Bool("help", false, "this help text")
-	h     = flag.Bool("h", false, "this help text")
-	command  = flag.String("c", "", "command to run when files change in given directories")
-	ignore   = flag.String("i", "", "comma-separated list of files to ignore")
-	stdin    = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")
-	delayDur = flag.Duration("delay", 750*time.Millisecond, "the time to wait between runs of the command if many fs events occur")
+	help           = flag.Bool("help", false, "this help text")
+	h              = flag.Bool("h", false, "this help text")
+	command        = flag.String("c", "", "command to run when files change in given directories")
+	ignore         = flag.String("i", "", "comma-separated list of files to ignore")
+	stdin          = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")
+	waitForCommand = flag.Bool("w", false, "wait for the command to finish and do not attempt to kill it")
+	delayDur       = flag.Duration("delay", 750*time.Millisecond, "the time to wait between runs of the command if many fs events occur")
 )
 
 func usage() {
@@ -147,6 +148,11 @@ func runCommand(cmd *cmdWrapper, done chan error) {
 		log.Printf("command failed: %s", err)
 		return
 	}
+	if *waitForCommand {
+		err := cmd.Wait()
+		go func() { done <- err }()
+		return
+	}
 	go func() {
 		err := cmd.Wait()
 		done <- err
@@ -186,7 +192,7 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 }
 
 type ignorer struct {
-	ignored map[string]bool
+	ignored     map[string]bool
 	ignoredDirs []string
 }
 
