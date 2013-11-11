@@ -7,16 +7,23 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
-	"time"
+	"sync"
 	"syscall"
+	"time"
 )
 
 var (
 	help    = flag.Bool("help", false, "help")
 	command = flag.String("c", "", "command to run when files change in given directories")
 	ignore  = flag.String("i", "", "comma separated list of files to ignore")
+
+	// for signal handling since we do interesting stuff with setpgid on the
+	// child process we create.
+	sigLock   = &sync.Mutex{}
+	globalCmd *exec.Cmd
 )
 
 func usage() {
@@ -24,11 +31,16 @@ func usage() {
 	os.Exit(1)
 }
 
+// TODO make container to clean up locking
 func main() {
 	flag.Parse()
 	if *help {
 		usage()
 	}
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, os.Interrupt)
+	go waitForInterrupt(sigCh)
+
 	ignoreNames := strings.Split(*ignore, ",")
 	ignored := make(map[string]bool)
 	for _, in := range ignoreNames {
@@ -54,7 +66,6 @@ func main() {
 				if ignored[en] {
 					continue
 				}
-				//				log.Printf("event %s: file %s", ev, ev.Name)
 				cmdCh <- time.Now()
 			case err := <-w.Error:
 				log.Println("error:", err)
@@ -72,68 +83,78 @@ func main() {
 		}
 	}
 	lastStartTime := time.Unix(0, 0)
-	var proc *os.Process
+	var cmd *exec.Cmd
 	done := make(chan error)
 	for t := range cmdCh {
-		log.Printf("event at %d", t)
 		if t.After(lastStartTime.Add(30 * time.Millisecond)) {
-			if proc != nil {
-				shutdownCommand(proc, done)
+			if cmd != nil {
+				shutdownCommand(cmd, done)
 			}
 			lastStartTime = time.Now()
-			proc = runCommand(proc, done)
+			cmd = runCommand(cmd, done)
 		}
 	}
 }
 
-func runCommand(oldProc *os.Process, done chan error) *os.Process {
-	log.Println("running")
+func runCommand(oldCmd *exec.Cmd, done chan error) *exec.Cmd {
+	log.Println("running " + *command)
 	cmd := exec.Command("bash", "-c", *command)
 	// Necessary so that SIGTERM's will traverse down to the the child
-	// processes in the bash command below.
+	// processes in the bash command below. See shutdownCommand.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	sigLock.Lock()
 	err := cmd.Start()
 	if err != nil {
-		log.Printf("error process %d", cmd.Process)
 		log.Printf("command failed: %s", err)
-		return oldProc
+		return oldCmd
 	}
-	log.Printf("got process %d", cmd.Process.Pid)
-	
+	globalCmd = cmd
+	sigLock.Unlock()
 	go func() {
 		err := cmd.Wait()
-		log.Printf("exiting process %d", cmd.Process.Pid)
 		done <- err
 	}()
-	return cmd.Process
+	return cmd
 }
 
-func shutdownCommand(proc *os.Process, done chan error) {
+func shutdownCommand(cmd *exec.Cmd, done chan error) {
+	sigLock.Lock()
+	defer sigLock.Unlock()
 	// the negation here means to kill not just the parent pid (which is the
 	// bash shell), but also its children. This means long-lived servers can
 	// be killed as well quickly exiting processes. e.g. "go build &&
 	// ./myserver -http=:6000". fswatch and others won't do this.
-	err = syscall.Kill(-proc.Pid, syscall.SIGTERM)
+	err := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
-		log.Printf("returning after first kill")
 		return
 	}
-
 	for {
 		select {
 		case <-done:
 			goto done
 		case <-time.After(300 * time.Millisecond):
-			err := syscall.Kill(-proc.Pid, syscall.SIGTERM)
-			log.Printf("kill error?: %#v", err)
+			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
 			if err != nil {
-				log.Printf("returning after kill")
-				return
+				goto done
 			}
 		}
 	}
 done:
-	log.Printf("Shutdown cleanly, i guess? %d", proc.Pid)
+	log.Printf("terminating command %d\n", cmd.Process.Pid)
+}
+
+func waitForInterrupt(sigCh chan os.Signal) {
+	defer os.Exit(0)
+	<-sigCh
+	sigLock.Lock()
+	defer sigLock.Unlock()
+	if globalCmd == nil {
+		return
+	}
+	err := syscall.Kill(-globalCmd.Process.Pid, syscall.SIGTERM)
+	if err != nil {
+		log.Printf("on interrupt, unable to kill command: %s", err)
+	}
 }
