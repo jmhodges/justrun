@@ -69,3 +69,9 @@ Justrun runs on *nixes only.
 
 Justrun will always send a SIGTERM to its child processes, even if it received
 a SIGINT.
+
+Justrun currently only supports the bash shell, but, with some thought, a
+shell configuration option could be provided. Pull requests welcome.
+
+The `-i` argument being a comma-separated list is gross. I've not found a
+better mechanism, yet. Globbing in it may help. Pull requests welcome.
