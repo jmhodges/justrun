@@ -7,7 +7,10 @@ and rerun it if more filesystem events occur. This makes it ideal for testing
 servers. (For instance, a web server whose templates you are editing.)
 
 When a directory is passed in a file path, justrun will watch all files in
-that directory, but does not recurse into subdirectories.
+that directory, but does not recurse into subdirectories. A nice trick you can
+pull is using `find . -type d` and the `-stdin` option to include all
+directories recursively. Use the `-i` (ignored file list) option wisely when
+you do so.
 
 Examples
 --------
@@ -15,6 +18,10 @@ Examples
     justrun -c "go build && ./mywebserver -https=:10443" -i mywebserver . templates/
 
     find . -type d | justrun -c "grep foobar *.rb" -stdin
+
+    mkfifo pipe1; justrun -c "grep foobar *.rb" -stdin < pipe1 & cat filelist1 filelist2 > pipe1
+
+    justrun -c "grep foobar *.rb" -stdin -i .git < <(cat filelist1 filelist2)
 
 Compared to other tools
 -----------------------
