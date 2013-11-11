@@ -35,7 +35,6 @@ func argError(format string, obj ...interface{}) {
 	usage()
 }
 
-// TODO handle ignored directories
 func main() {
 	flag.Parse()
 	if *help || *h {
