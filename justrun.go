@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	help           = flag.Bool("help", false, "this help text")
-	h              = flag.Bool("h", false, "this help text")
+	help           = flag.Bool("help", false, "print this help text")
+	h              = flag.Bool("h", false, "print this help text")
 	command        = flag.String("c", "", "command to run when files change in given directories")
 	ignore         = flag.String("i", "", "comma-separated list of files to ignore")
 	stdin          = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")

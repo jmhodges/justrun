@@ -46,8 +46,8 @@ Usage
     usage: justrun -c 'SOME BASH COMMAND' [FILEPATH]*
       -c="": command to run when files change in given directories
       -delay=750ms: the time to wait between runs of the command if many fs events occur
-      -h=false: this help text
-      -help=false: this help text
+      -h=false: print this help text
+      -help=false: print this help text
       -i="": comma-separated list of files to ignore
       -stdin=false: read list of files to track from stdin, not the command-line
       -w=false: wait for the command to finish and do not attempt to kill it
