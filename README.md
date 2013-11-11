@@ -30,11 +30,9 @@ Examples
 
     justrun -c "make" -w -i mylib.a,.git .
 
-    find . -type d | justrun -c "grep foobar *.h" -stdin
+    find . -type d | justrun -c "grep foobar *.h" -stdin -i .git
 
-    justrun -c "grep foobar *.h" -stdin -i .git < <(cat filelist1 filelist2)
-
-    mkfifo pipe1; justrun -c "grep foobar *.h" -stdin < pipe1 & cat filelist1 filelist2 > pipe1
+    justrun -c "grep foobar *.h" -stdin < <(cat filelist1 filelist2)
 
     justrun -c "some_expensive_op" -delay 10s .
 
