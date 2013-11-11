@@ -51,6 +51,7 @@ Usage
       -help=false: this help text
       -i="": comma-separated list of files to ignore
       -stdin=false: read list of files to track from stdin, not the command-line
+      -w=false: wait for the command to finish and do not attempt to kill it
 
 Compared to other tools
 -----------------------
