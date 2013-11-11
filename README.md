@@ -25,11 +25,11 @@ Examples
 
     justrun -c "make" -w -i mylib.a,.git .
 
-    find . -type d | justrun -c "grep foobar *.rb" -stdin
+    find . -type d | justrun -c "grep foobar *.h" -stdin
 
-    justrun -c "grep foobar *.rb" -stdin -i .git < <(cat filelist1 filelist2)
+    justrun -c "grep foobar *.h" -stdin -i .git < <(cat filelist1 filelist2)
 
-    mkfifo pipe1; justrun -c "grep foobar *.rb" -stdin < pipe1 & cat filelist1 filelist2 > pipe1
+    mkfifo pipe1; justrun -c "grep foobar *.h" -stdin < pipe1 & cat filelist1 filelist2 > pipe1
 
 Usage
 -----
