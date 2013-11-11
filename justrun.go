@@ -31,12 +31,9 @@ func main() {
 	if *help {
 		usage()
 	}
-	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
-
-	sigCh := make(chan os.Signal)
-	signal.Notify(sigCh, os.Interrupt)
-	go waitForInterrupt(sigCh, cmd)
-
+	if len(flag.Args()) == 0 {
+		usage()
+	}
 	ignoreNames := strings.Split(*ignore, ",")
 	ignored := make(map[string]bool)
 	for _, in := range ignoreNames {
@@ -46,6 +43,13 @@ func main() {
 		}
 		ignored[a] = true
 	}
+
+	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
+
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, os.Interrupt)
+	go waitForInterrupt(sigCh, cmd)
+
 	cmdCh := make(chan time.Time, 100)
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -69,9 +73,6 @@ func main() {
 		}
 	}()
 
-	if len(flag.Args()) == 0 {
-		usage()
-	}
 	for _, path := range flag.Args() {
 		err = w.Watch(path)
 		if err != nil {
