@@ -36,12 +36,22 @@ func main() {
 	}
 	ignoreNames := strings.Split(*ignore, ",")
 	ignored := make(map[string]bool)
+	ignoredDirs := make([]string, 0)
 	for _, in := range ignoreNames {
-		a, err := filepath.Abs(in)
+		in = strings.TrimSpace(in)
+		if len(in) == 0 {
+			continue
+		}
+		path, err := filepath.Abs(in)
 		if err != nil {
 			log.Fatalf("unable to get current working dir")
 		}
-		ignored[a] = true
+		ignored[path] = true
+		dirPath := path
+		if path[len(path)-1] != '/' {
+			dirPath += "/"
+		}
+		ignoredDirs = append(ignoredDirs, dirPath)
 	}
 
 	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
@@ -55,7 +65,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go listenForEvents(w, cmdCh, ignored)
+	go listenForEvents(w, cmdCh, ignored, ignoredDirs)
 
 	for _, path := range flag.Args() {
 		err = w.Watch(path)
@@ -144,7 +154,7 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	}
 }
 
-func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignored map[string]bool) {
+func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignored map[string]bool, ignoredDirs []string) {
 	for {
 		select {
 		case ev := <-w.Event:
@@ -154,6 +164,11 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignored map[stri
 			}
 			if ignored[en] {
 				continue
+			}
+			for _, dir := range ignoredDirs {
+				if strings.HasPrefix(en, dir) {
+					continue
+				}
 			}
 			cmdCh <- time.Now()
 		case err := <-w.Error:
