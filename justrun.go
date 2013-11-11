@@ -66,6 +66,7 @@ func main() {
 	lastStartTime := time.Unix(0, 0)
 	done := make(chan error)
 	wasDelayed := false
+	reload(cmd, done, &lastStartTime)
 	tick := time.NewTicker(*delayDur)
 	for {
 		select {
