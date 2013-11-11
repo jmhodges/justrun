@@ -9,14 +9,19 @@ servers. (For instance, a web server whose templates you are editing.)
 When a directory is passed in a file path, justrun will watch all files in
 that directory, but does not recurse into subdirectories. A nice trick you can
 pull is using `find . -type d` and the `-stdin` option to include all
-directories recursively. Use the `-i` (ignored file list) option wisely when
-you do so.
+directories recursively. When playing tricks like this, use the ignored file
+list option (`-i`) wisely. If not, you'll accidentally watch files that your
+command touch, and put your commands into an infinite loop.
 
 Justrun does kill the child processes of commands run in it in order to handle
 the lifecycles of long-lived (that is, server) processes. If you do not want
 justrun to wait for the commands to finish instead, add the `-w` argument to
 the commandline. If you wish to fork off subprocessses in your commands,
 you'll have to call setpgid in the commands to avoid having them terminated.
+
+Justrun also lets you say how long to wait before running the command again,
+even if filesystem events have occurred. See the `-delay` option in the Usage
+section.
 
 Examples
 --------
@@ -30,6 +35,10 @@ Examples
     justrun -c "grep foobar *.h" -stdin -i .git < <(cat filelist1 filelist2)
 
     mkfifo pipe1; justrun -c "grep foobar *.h" -stdin < pipe1 & cat filelist1 filelist2 > pipe1
+
+    justrun -c "some_expensive_op" -delay 10s .
+
+    justrun -c "some_inexpensive_op" -delay 100ms .
 
 Usage
 -----
@@ -75,3 +84,7 @@ shell configuration option could be provided. Pull requests welcome.
 
 The `-i` argument being a comma-separated list is gross. I've not found a
 better mechanism, yet. Globbing in it may help. Pull requests welcome.
+
+It's fairly easy to accidentally cause a cycle in your commands and the
+filesystem watches. Add files or directories touched or created by your
+commands to the `-i` option.
