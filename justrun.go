@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/howeyc/fsnotify"
@@ -14,25 +15,52 @@ import (
 )
 
 var (
-	help     = flag.Bool("help", false, "help")
+	help     = flag.Bool("help", false, "this help text")
+	h     = flag.Bool("h", false, "this help text")
 	command  = flag.String("c", "", "command to run when files change in given directories")
-	ignore   = flag.String("i", "", "comma separated list of files to ignore")
+	ignore   = flag.String("i", "", "comma-separated list of files to ignore")
+	stdin    = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")
 	delayDur = flag.Duration("delay", 750*time.Millisecond, "the time to wait between runs of the command if many fs events occur")
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "justrun -c 'SOME BASH COMMAND' [FILEPATH]*\n")
+	fmt.Fprintf(os.Stderr, "usage: justrun -c 'SOME BASH COMMAND' [FILEPATH]*\n")
+	flag.PrintDefaults()
 	os.Exit(1)
+}
+
+func argError(format string, obj ...interface{}) {
+	fmt.Fprintf(os.Stderr, "justrun: "+format+"\n", obj...)
+	usage()
 }
 
 // TODO handle ignored directories
 func main() {
 	flag.Parse()
-	if *help {
+	if *help || *h {
 		usage()
 	}
-	if len(flag.Args()) == 0 {
+	if len(*command) == 0 {
 		usage()
+	}
+	if *stdin && len(flag.Args()) != 0 {
+		argError("expected files to come in over stdin, but got paths '%s' in the commandline", strings.Join(flag.Args(), ", "))
+	}
+	var inputPaths []string
+	if *stdin {
+		sc := bufio.NewScanner(os.Stdin)
+		for sc.Scan() {
+			inputPaths = append(inputPaths, sc.Text())
+		}
+		if sc.Err() != nil {
+			argError("error reading from stdin: %s", sc.Err())
+		}
+	} else {
+		inputPaths = flag.Args()
+	}
+
+	if len(inputPaths) == 0 {
+		argError("no file paths provided to watch")
 	}
 	ignoreNames := strings.Split(*ignore, ",")
 	ignored := make(map[string]bool)
@@ -53,7 +81,7 @@ func main() {
 		}
 		ignoredDirs = append(ignoredDirs, dirPath)
 	}
-
+	ig := &ignorer{ignored, ignoredDirs}
 	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
 
 	sigCh := make(chan os.Signal)
@@ -65,9 +93,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go listenForEvents(w, cmdCh, ignored, ignoredDirs)
+	go listenForEvents(w, cmdCh, ig)
 
-	for _, path := range flag.Args() {
+	for _, path := range inputPaths {
+		if ig.IsIgnored(path) {
+			continue
+		}
 		err = w.Watch(path)
 		if err != nil {
 			log.Fatalf("unable to watch '%s': %s", path, err)
@@ -154,21 +185,33 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	}
 }
 
-func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignored map[string]bool, ignoredDirs []string) {
+type ignorer struct {
+	ignored map[string]bool
+	ignoredDirs []string
+}
+
+func (ig *ignorer) IsIgnored(path string) bool {
+	en, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalf("unable to get current working dir")
+	}
+	if ig.ignored[en] {
+		return true
+	}
+	for _, dir := range ig.ignoredDirs {
+		if strings.HasPrefix(en, dir) {
+			return true
+		}
+	}
+	return false
+}
+
+func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignorer *ignorer) {
 	for {
 		select {
 		case ev := <-w.Event:
-			en, err := filepath.Abs(ev.Name)
-			if err != nil {
-				log.Fatalf("unable to get current working dir")
-			}
-			if ignored[en] {
+			if ignorer.IsIgnored(ev.Name) {
 				continue
-			}
-			for _, dir := range ignoredDirs {
-				if strings.HasPrefix(en, dir) {
-					continue
-				}
 			}
 			cmdCh <- time.Now()
 		case err := <-w.Error:

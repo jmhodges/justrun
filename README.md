@@ -1,13 +1,23 @@
 justrun
---------
+=======
 
 justrun watches files and directories and will perform the command given it
 when they change. Unlike similar tools, it will terminate the running command
 and rerun it if more filesystem events occur. This makes it ideal for testing
 servers. (For instance, a web server whose templates you are editing.)
 
+When a directory is passed in a file path, justrun will watch all files in
+that directory, but does not recurse into subdirectories.
+
+Examples
+--------
+
+    justrun -c "go build && ./mywebserver -https=:10443" -i mywebserver . templates/
+
+    find . -type d | justrun -c "grep foobar *.rb" -stdin
+
 Compared to other tools
-========================
+-----------------------
 
 justrun is perhaps best understood in terms of the other tools out
 there. [inotify-tools][inotify-tools] is Linux only and doesn't handle process
