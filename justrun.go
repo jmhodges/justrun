@@ -29,12 +29,11 @@ var (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "justrun -c 'SOME BASH COMMAND' [FILEPATH...]\n")
+	fmt.Fprintf(os.Stderr, "justrun -c 'SOME BASH COMMAND' [FILEPATH]*\n")
 	os.Exit(1)
 }
 
 // TODO make container to clean up locking
-// TODO fix [FILEPATH]*
 // TODO handle ignored directories
 func main() {
 	flag.Parse()
