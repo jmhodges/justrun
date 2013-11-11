@@ -19,9 +19,11 @@ var (
 	help    = flag.Bool("help", false, "help")
 	command = flag.String("c", "", "command to run when files change in given directories")
 	ignore  = flag.String("i", "", "comma separated list of files to ignore")
+	delayDur = flag.Duration("delay", 750 * time.Millisecond, "the time to wait between runs of the command if many fs events occur")
 
-	// for signal handling since we do interesting stuff with setpgid on the
-	// child process we create.
+	// These globals are for signal handling. The signal handling is required
+	// since we do interesting stuff with setpgid on the child process we
+	// create.
 	sigLock   = &sync.Mutex{}
 	globalCmd *exec.Cmd
 )
@@ -32,7 +34,6 @@ func usage() {
 }
 
 // TODO make container to clean up locking
-// TODO ignore more events by batching better
 // TODO fix [FILEPATH]*
 // TODO handle ignored directories
 func main() {
@@ -53,7 +54,7 @@ func main() {
 		}
 		ignored[a] = true
 	}
-	cmdCh := make(chan time.Time)
+	cmdCh := make(chan time.Time, 100)
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -88,15 +89,39 @@ func main() {
 	lastStartTime := time.Unix(0, 0)
 	var cmd *exec.Cmd
 	done := make(chan error)
-	for t := range cmdCh {
-		if t.After(lastStartTime.Add(30 * time.Millisecond)) {
-			if cmd != nil {
-				shutdownCommand(cmd, done)
+	wasDelayed := false
+	tick := time.NewTicker(*delayDur)
+	for {
+		select {
+		case t := <-cmdCh:
+			if lastStartTime.After(t) {
+				continue
 			}
-			lastStartTime = time.Now()
-			cmd = runCommand(cmd, done)
+			// Using delayDur here and in NewTicker is slightly semantically
+			// incorrect, but it simplifies our config and prevents the
+			// egregious reloading.
+			if time.Now().Sub(t) < *delayDur {
+				wasDelayed = true
+				continue
+			}
+			wasDelayed = false
+			cmd = reload(cmd, done, &lastStartTime)
+			tick = time.NewTicker(*delayDur)
+		case <-tick.C:
+			if wasDelayed {
+				wasDelayed = false
+				cmd = reload(cmd, done, &lastStartTime)
+			}
 		}
 	}
+}
+
+func reload(cmd *exec.Cmd, done chan error, lastStartTime *time.Time) *exec.Cmd {
+		if cmd != nil {
+			shutdownCommand(cmd, done)
+		}
+		*lastStartTime = time.Now()
+		return runCommand(cmd, done)
 }
 
 func runCommand(oldCmd *exec.Cmd, done chan error) *exec.Cmd {
