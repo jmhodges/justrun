@@ -23,6 +23,18 @@ Examples
 
     justrun -c "grep foobar *.rb" -stdin -i .git < <(cat filelist1 filelist2)
 
+Usage
+-----
+
+    $  justrun -h
+    usage: justrun -c 'SOME BASH COMMAND' [FILEPATH]*
+      -c="": command to run when files change in given directories
+      -delay=750ms: the time to wait between runs of the command if many fs events occur
+      -h=false: this help text
+      -help=false: this help text
+      -i="": comma-separated list of files to ignore
+      -stdin=false: read list of files to track from stdin, not the command-line
+
 Compared to other tools
 -----------------------
 
