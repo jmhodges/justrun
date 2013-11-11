@@ -133,18 +133,20 @@ func shutdownCommand(cmd *cmdWrapper, done chan error) {
 		return
 	}
 
-	for {
-		select {
-		case <-done:
-			goto done
-		case <-time.After(300 * time.Millisecond):
-			err := cmd.Terminate()
-			if err != nil {
-				goto done
-			}
+waitOrRetry:
+	select {
+	case <-done:
+		break
+	case <-time.After(300 * time.Millisecond):
+		err := cmd.Terminate()
+		if err == nil {
+			// If terminate claims to succeed, we want to make sure the done
+			// message came across. If the done message doesn't come, the
+			// process didn't die anad we need to try terminating again.
+			goto waitOrRetry
 		}
+		break
 	}
-done:
 	log.Printf("terminating command %d\n", cmd.cmd.Process.Pid)
 }
 
