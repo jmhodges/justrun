@@ -6,26 +6,18 @@ import (
 	"github.com/howeyc/fsnotify"
 	"log"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
 var (
-	help    = flag.Bool("help", false, "help")
-	command = flag.String("c", "", "command to run when files change in given directories")
-	ignore  = flag.String("i", "", "comma separated list of files to ignore")
-	delayDur = flag.Duration("delay", 750 * time.Millisecond, "the time to wait between runs of the command if many fs events occur")
-
-	// These globals are for signal handling. The signal handling is required
-	// since we do interesting stuff with setpgid on the child process we
-	// create.
-	sigLock   = &sync.Mutex{}
-	globalCmd *exec.Cmd
+	help     = flag.Bool("help", false, "help")
+	command  = flag.String("c", "", "command to run when files change in given directories")
+	ignore   = flag.String("i", "", "comma separated list of files to ignore")
+	delayDur = flag.Duration("delay", 750*time.Millisecond, "the time to wait between runs of the command if many fs events occur")
 )
 
 func usage() {
@@ -33,16 +25,17 @@ func usage() {
 	os.Exit(1)
 }
 
-// TODO make container to clean up locking
 // TODO handle ignored directories
 func main() {
 	flag.Parse()
 	if *help {
 		usage()
 	}
+	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
+
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, os.Interrupt)
-	go waitForInterrupt(sigCh)
+	go waitForInterrupt(sigCh, cmd)
 
 	ignoreNames := strings.Split(*ignore, ",")
 	ignored := make(map[string]bool)
@@ -86,7 +79,6 @@ func main() {
 		}
 	}
 	lastStartTime := time.Unix(0, 0)
-	var cmd *exec.Cmd
 	done := make(chan error)
 	wasDelayed := false
 	tick := time.NewTicker(*delayDur)
@@ -104,83 +96,61 @@ func main() {
 				continue
 			}
 			wasDelayed = false
-			cmd = reload(cmd, done, &lastStartTime)
+			reload(cmd, done, &lastStartTime)
 			tick = time.NewTicker(*delayDur)
 		case <-tick.C:
 			if wasDelayed {
 				wasDelayed = false
-				cmd = reload(cmd, done, &lastStartTime)
+				reload(cmd, done, &lastStartTime)
 			}
 		}
 	}
 }
 
-func reload(cmd *exec.Cmd, done chan error, lastStartTime *time.Time) *exec.Cmd {
-		if cmd != nil {
-			shutdownCommand(cmd, done)
-		}
-		*lastStartTime = time.Now()
-		return runCommand(cmd, done)
+func reload(cmd *cmdWrapper, done chan error, lastStartTime *time.Time) {
+	shutdownCommand(cmd, done)
+	*lastStartTime = time.Now()
+	runCommand(cmd, done)
 }
 
-func runCommand(oldCmd *exec.Cmd, done chan error) *exec.Cmd {
+func runCommand(cmd *cmdWrapper, done chan error) {
 	log.Println("running " + *command)
-	cmd := exec.Command("bash", "-c", *command)
-	// Necessary so that SIGTERM's will traverse down to the the child
-	// processes in the bash command below. See shutdownCommand.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	sigLock.Lock()
 	err := cmd.Start()
 	if err != nil {
 		log.Printf("command failed: %s", err)
-		return oldCmd
+		return
 	}
-	globalCmd = cmd
-	sigLock.Unlock()
 	go func() {
 		err := cmd.Wait()
 		done <- err
 	}()
-	return cmd
 }
 
-func shutdownCommand(cmd *exec.Cmd, done chan error) {
-	sigLock.Lock()
-	defer sigLock.Unlock()
-	// the negation here means to kill not just the parent pid (which is the
-	// bash shell), but also its children. This means long-lived servers can
-	// be killed as well quickly exiting processes. e.g. "go build &&
-	// ./myserver -http=:6000". fswatch and others won't do this.
-	err := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+func shutdownCommand(cmd *cmdWrapper, done chan error) {
+	err := cmd.Terminate()
 	if err != nil {
 		return
 	}
+
 	for {
 		select {
 		case <-done:
 			goto done
 		case <-time.After(300 * time.Millisecond):
-			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+			err := cmd.Terminate()
 			if err != nil {
 				goto done
 			}
 		}
 	}
 done:
-	log.Printf("terminating command %d\n", cmd.Process.Pid)
+	log.Printf("terminating command %d\n", cmd.cmd.Process.Pid)
 }
 
-func waitForInterrupt(sigCh chan os.Signal) {
+func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	defer os.Exit(0)
 	<-sigCh
-	sigLock.Lock()
-	defer sigLock.Unlock()
-	if globalCmd == nil {
-		return
-	}
-	err := syscall.Kill(-globalCmd.Process.Pid, syscall.SIGTERM)
+	err := cmd.Terminate()
 	if err != nil {
 		log.Printf("on interrupt, unable to kill command: %s", err)
 	}
