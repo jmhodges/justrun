@@ -13,16 +13,16 @@ directories recursively. When playing tricks like this, use the ignored file
 list option (`-i`) wisely. If not, you'll accidentally watch files that your
 command touch, and put your commands into an infinite loop.
 
+Justrun also lets you say how long to wait before running the command again,
+even if filesystem events have occurred in the meantime. See the `-delay`
+option in the [Usage section][usage].
+
 Justrun does kill the child processes of commands run in it in order to handle
 the lifecycles of long-lived (that is, server) processes. If you do not want
 justrun to wait for the commands to finish instead, add the `-w` argument to
 the commandline. If you wish to fork off subprocessses in your commands,
 you'll have to call [`setpgid(2)`][setpgid] (or `set -o monitor` in the bash
 shell) in the commands to avoid having them terminated.
-
-Justrun also lets you say how long to wait before running the command again,
-even if filesystem events have occurred. See the `-delay` option in the Usage
-section.
 
 Examples
 --------
@@ -91,6 +91,7 @@ It's fairly easy to accidentally cause a cycle in your commands and the
 filesystem watches. Add files or directories touched or created by your
 commands to the `-i` option.
 
+[usage]: https://github.com/jmhodges/justrun#usage
 [setpgid]: http://linux.die.net/man/2/setpgid
 [inotify-tools]: https://github.com/rvoicilas/inotify-tools/wiki
 [fswatch]: https://github.com/alandipert/fswatch
