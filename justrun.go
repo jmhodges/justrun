@@ -55,23 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go func() {
-		for {
-			select {
-			case ev := <-w.Event:
-				en, err := filepath.Abs(ev.Name)
-				if err != nil {
-					log.Fatalf("unable to get current working dir")
-				}
-				if ignored[en] {
-					continue
-				}
-				cmdCh <- time.Now()
-			case err := <-w.Error:
-				log.Println("error:", err)
-			}
-		}
-	}()
+	go listenForEvents(w, cmdCh, ignored)
 
 	for _, path := range flag.Args() {
 		err = w.Watch(path)
@@ -156,5 +140,23 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	err := cmd.Terminate()
 	if err != nil {
 		log.Printf("on interrupt, unable to kill command: %s", err)
+	}
+}
+
+func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignored map[string]bool) {
+	for {
+		select {
+		case ev := <-w.Event:
+			en, err := filepath.Abs(ev.Name)
+			if err != nil {
+				log.Fatalf("unable to get current working dir")
+			}
+			if ignored[en] {
+				continue
+			}
+			cmdCh <- time.Now()
+		case err := <-w.Error:
+			log.Println("error:", err)
+		}
 	}
 }
