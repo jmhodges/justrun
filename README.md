@@ -27,17 +27,17 @@ shell) in the commands to avoid having them terminated.
 Examples
 --------
 
-    justrun -c "go build && ./mywebserver -https=:10443" -i mywebserver . templates/
+    justrun -c 'go build && ./mywebserver -https=:10443' -i mywebserver . templates/
 
-    justrun -c "make" -w -i mylib.a,.git .
+    justrun -c 'make' -w -i mylib.a,.git .
 
-    find . -type d | justrun -c "grep foobar *.h" -stdin -i .git
+    find . -type d | justrun -c 'grep foobar *.h' -stdin -i .git
 
-    justrun -c "grep foobar *.h" -stdin < <(cat filelist1 filelist2)
+    justrun -c 'grep foobar *.h' -stdin < <(cat filelist1 filelist2)
 
-    justrun -c "some_expensive_op" -delay 10s .
+    justrun -c 'some_expensive_op' -delay 10s .
 
-    justrun -c "some_inexpensive_op" -delay 100ms .
+    justrun -c 'some_inexpensive_op' -delay 100ms .
 
 Usage
 -----
