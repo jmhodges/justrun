@@ -76,7 +76,7 @@ func main() {
 	for _, path := range flag.Args() {
 		err = w.Watch(path)
 		if err != nil {
-			log.Fatalf("unable to watch: %s", err)
+			log.Fatalf("unable to watch '%s': %s", path, err)
 		}
 	}
 	lastStartTime := time.Unix(0, 0)
