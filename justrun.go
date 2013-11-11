@@ -89,6 +89,9 @@ func main() {
 func runCommand(oldProc *os.Process, done chan error) *os.Process {
 	log.Println("running")
 	cmd := exec.Command("bash", "-c", *command)
+	// Necessary so that SIGTERM's will traverse down to the the child
+	// processes in the bash command below.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
@@ -108,21 +111,29 @@ func runCommand(oldProc *os.Process, done chan error) *os.Process {
 }
 
 func shutdownCommand(proc *os.Process, done chan error) {
-	err := syscall.Kill(proc.Pid, syscall.SIGKILL)
+	// the negation here means to kill not just the parent pid (which is the
+	// bash shell), but also its children. This means long-lived servers can
+	// be killed as well quickly exiting processes. e.g. "go build &&
+	// ./myserver -http=:6000". fswatch and others won't do this.
+	err = syscall.Kill(-proc.Pid, syscall.SIGTERM)
 	if err != nil {
 		log.Printf("returning after first kill")
 		return
 	}
-	select {
-	case <-done:
-		break
-	case <-time.After(300 * time.Millisecond):
-		err := syscall.Kill(proc.Pid, syscall.SIGKILL)
-		log.Printf("kill error?: %#v", err)
-		if err != nil {
-			log.Printf("returning after kill")
-			return
+
+	for {
+		select {
+		case <-done:
+			goto done
+		case <-time.After(300 * time.Millisecond):
+			err := syscall.Kill(-proc.Pid, syscall.SIGTERM)
+			log.Printf("kill error?: %#v", err)
+			if err != nil {
+				log.Printf("returning after kill")
+				return
+			}
 		}
 	}
+done:
 	log.Printf("Shutdown cleanly, i guess? %d", proc.Pid)
 }
