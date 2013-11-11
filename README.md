@@ -1,4 +1,4 @@
-Justrun
+justrun
 =======
 
 Justrun watches files and directories and will perform the command given it
