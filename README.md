@@ -64,7 +64,9 @@ running it again (making it useless for running servers), and is OS X
 only. [entr][entr] also waits until the command given finishes for
 re-running. [devweb][devweb] assumes that the command being run is a binary
 that takes the parameter `-addr`. [shotgun][shotgun] is only capable of
-running Ruby Rack servers, and nothing else.
+running Ruby Rack servers, and nothing else. [nailgun][nailgun] requires the
+commands be written in Java, and are run in the nailgun server's process space
+instead of the user's shell.
 
 Not all of the contraints on these other tools are bad choices.
 
@@ -89,3 +91,10 @@ better mechanism, yet. Globbing in it may help. Pull requests welcome.
 It's fairly easy to accidentally cause a cycle in your commands and the
 filesystem watches. Add files or directories touched or created by your
 commands to the `-i` option.
+
+[inotify-tools]: https://github.com/rvoicilas/inotify-tools/wiki
+[fswatch]: https://github.com/alandipert/fswatch
+[entr]: http://entrproject.org/
+[devweb]: https://code.google.com/p/rsc/source/browse/devweb
+[shotgun]: https://github.com/rtomayko/shotgun
+[nailgun]: http://www.martiansoftware.com/nailgun/
