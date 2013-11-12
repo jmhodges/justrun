@@ -17,8 +17,8 @@ Justrun also lets you say how long to wait before running the command again,
 even if filesystem events have occurred in the meantime. See the `-delay`
 option in the [Usage section][usage].
 
-Justrun does kill the child processes of commands run in it in order to handle
-the lifecycles of long-lived (that is, server) processes. If you do not want
+Justrun does kill the child processes of the bash command run by it to end the
+lifecycles of long-lived (that is, server) processes. If you do not want
 justrun to wait for the commands to finish instead, add the `-w` argument to
 the commandline. If you wish to fork off subprocessses in your commands,
 you'll have to call [`setpgid(2)`][setpgid] (or `set -o monitor` in the bash
