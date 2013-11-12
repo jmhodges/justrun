@@ -57,9 +57,9 @@ Compared to other tools
 
 Justrun is perhaps best understood in terms of the other tools out
 there. [inotify-tools][inotify-tools] is Linux only and doesn't handle process
-lifetime of the commands it runs (though, this may be
-desirable). [fswatch][fswatch] will wait until the command halts before
-running it again (making it useless for running servers), and is OS X
+lifetime of the commands it runs (though, this may be desirable) so its
+difficult to make servers run well with it. [fswatch][fswatch] similarly will
+wait until the command halts before running it again, and is OS X
 only. [entr][entr] also waits until the command given finishes for
 re-running. [devweb][devweb] assumes that the command being run is a binary
 that takes the parameter `-addr`. [shotgun][shotgun] is only capable of
