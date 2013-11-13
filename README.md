@@ -17,8 +17,8 @@ Justrun also lets you say how long to wait before running the command again,
 even if filesystem events have occurred in the meantime. See the `-delay`
 option in the [Usage section][usage].
 
-Justrun does kill the child processes of commands run in it in order to handle
-the lifecycles of long-lived (that is, server) processes. If you do not want
+Justrun does kill the child processes of the bash command run by it to end the
+lifecycles of long-lived (that is, server) processes. If you do not want
 justrun to wait for the commands to finish instead, add the `-w` argument to
 the commandline. If you wish to fork off subprocessses in your commands,
 you'll have to call [`setpgid(2)`][setpgid] (or `set -o monitor` in the bash
@@ -57,9 +57,9 @@ Compared to other tools
 
 Justrun is perhaps best understood in terms of the other tools out
 there. [inotify-tools][inotify-tools] is Linux only and doesn't handle process
-lifetime of the commands it runs (though, this may be
-desirable). [fswatch][fswatch] will wait until the command halts before
-running it again (making it useless for running servers), and is OS X
+lifetime of the commands it runs (though, this may be desirable) so its
+difficult to make servers run well with it. [fswatch][fswatch] similarly will
+wait until the command halts before running it again, and is OS X
 only. [entr][entr] also waits until the command given finishes for
 re-running. [devweb][devweb] assumes that the command being run is a binary
 that takes the parameter `-addr`. [shotgun][shotgun] is only capable of
