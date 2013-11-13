@@ -67,7 +67,7 @@ running Ruby Rack servers, and nothing else. [nailgun][nailgun] requires the
 commands be written in Java, and are run in the nailgun server's process space
 instead of the user's shell.
 
-Not all of the contraints on these other tools are bad choices.
+Not all of the constraints on these other tools are bad choices.
 
 Caveats
 -------
