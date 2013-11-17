@@ -20,9 +20,7 @@ option in the [Usage section][usage].
 Justrun does kill the child processes of the bash command run by it to end the
 lifecycles of long-lived (that is, server) processes. If you do not want
 justrun to wait for the commands to finish instead, add the `-w` argument to
-the commandline. If you wish to fork off subprocessses in your commands,
-you'll have to call [`setpgid(2)`][setpgid] (or `set -o monitor` in the bash
-shell) in the commands to avoid having them terminated.
+the commandline.
 
 Examples
 --------
@@ -90,6 +88,10 @@ better mechanism, yet. Globbing in it may help. Pull requests welcome.
 It's fairly easy to accidentally cause a cycle in your commands and the
 filesystem watches. Add files or directories touched or created by your
 commands to the `-i` option.
+
+If you wish to fork off subprocessses in your commands, you'll have to call
+[`setpgid(2)`][setpgid] (or `set -o monitor` in the bash shell) in the
+commands to avoid having them terminated.
 
 [usage]: https://github.com/jmhodges/justrun#usage
 [setpgid]: http://linux.die.net/man/2/setpgid
