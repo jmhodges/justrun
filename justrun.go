@@ -22,6 +22,7 @@ var (
 	stdin          = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")
 	waitForCommand = flag.Bool("w", false, "wait for the command to finish and do not attempt to kill it")
 	delayDur       = flag.Duration("delay", 750*time.Millisecond, "the time to wait between runs of the command if many fs events occur")
+	verbose        = flag.Bool("v", false, "verbose output")
 )
 
 func usage() {
@@ -217,6 +218,9 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignorer *ignorer
 		case ev := <-w.Event:
 			if ignorer.IsIgnored(ev.Name) {
 				continue
+			}
+			if *verbose {
+				log.Printf("file changed: %s", ev)
 			}
 			cmdCh <- time.Now()
 		case err := <-w.Error:
