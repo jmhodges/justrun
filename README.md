@@ -2,9 +2,9 @@ justrun
 =======
 
 Justrun watches files and directories and will perform the command given it
-when they change. Unlike similar tools, it will terminate the running command
-and rerun it if more filesystem events occur. This makes it ideal for testing
-servers. (For instance, a web server whose templates you are editing.)
+when those files change. Unlike similar tools, it will terminate the running
+command and rerun it if more filesystem events occur. This makes it ideal for
+testing servers. (For instance, a web server whose templates you are editing.)
 
 When a directory is passed in a file path, justrun will watch all files in
 that directory, but does not recurse into subdirectories. A nice trick you can
