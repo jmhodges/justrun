@@ -87,8 +87,8 @@ The `-i` argument being a comma-separated list is gross. I've not found a
 better mechanism, yet. Globbing in it may help. Pull requests welcome.
 
 It's fairly easy to accidentally cause a cycle in your commands and the
-filesystem watches. Add files or directories touched or created by your
-commands to the `-i` option.
+filesystem watches. Files or directories that will be touched or created by
+your command should be added to the `-i` option.
 
 If you wish to fork off subprocessses in your commands, you'll have to call
 [`setpgid(2)`][setpgid] (or `set -o monitor` in the bash shell) in the
