@@ -51,6 +51,18 @@ Usage
       -v=false: verbose output
       -w=false: wait for the command to finish and do not attempt to kill it
 
+Installation
+------------
+
+You will need the [golang compiler](http://golang.org/doc/install).
+
+    git clone https://github.com/jmhodges/justrun.git
+    cd justrun
+    export GOPATH=$(pwd)
+    go get github.com/howeyc/fsnotify
+    go build
+    ./justrun
+    
 Compared to other tools
 -----------------------
 
