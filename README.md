@@ -68,6 +68,15 @@ instead of the user's shell.
 
 Not all of the constraints on these other tools are bad choices.
 
+Installing
+----------
+
+Until I publish the binaries, the current way of installing justrun is to
+[install Go][installgo] (being sure to set up a working `$GOPATH`, detailed in those
+instructions), and running
+
+    go get github.com/jmhodges/justrun
+
 Caveats
 -------
 
@@ -102,3 +111,4 @@ commands to avoid having them terminated.
 [devweb]: https://code.google.com/p/rsc/source/browse/devweb
 [shotgun]: https://github.com/rtomayko/shotgun
 [nailgun]: http://www.martiansoftware.com/nailgun/
+[installgo]: http://golang.org/doc/install#install
