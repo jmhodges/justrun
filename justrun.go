@@ -143,7 +143,7 @@ func reload(cmd *cmdWrapper, done chan error, lastStartTime *time.Time) {
 }
 
 func runCommand(cmd *cmdWrapper, done chan error) {
-	log.Println("running " + *command)
+	log.Printf("running '%s'\n",  *command)
 	err := cmd.Start()
 	if err != nil {
 		log.Printf("command failed: %s", err)
@@ -180,7 +180,11 @@ waitOrRetry:
 		}
 		break
 	}
-	log.Printf("terminating command %d\n", cmd.cmd.Process.Pid)
+	msg := "terminating current command"
+	if *verbose {
+		msg += fmt.Sprintf(" %d", cmd.cmd.Process.Pid)
+	}
+	log.Println(msg)
 }
 
 func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
