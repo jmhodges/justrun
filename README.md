@@ -71,6 +71,10 @@ Not all of the constraints on these other tools are bad choices.
 Installing
 ----------
 
+The easiest way to install justrun is to put the justrun binary in [the published
+zipfiles][download] into your PATH. That's it! You can find all of the
+pre-built binaries at [http://projects.somethingsimilar.com/justrun/downloads/][download]
+
 Until I publish the binaries, the current way of installing justrun is to
 [install Go][installgo] (being sure to set up a working `$GOPATH`, detailed in those
 instructions), and running
@@ -112,3 +116,4 @@ commands to avoid having them terminated.
 [shotgun]: https://github.com/rtomayko/shotgun
 [nailgun]: http://www.martiansoftware.com/nailgun/
 [installgo]: http://golang.org/doc/install#install
+[download]: http://projects.somethingsimilar.com/justrun/downloads
