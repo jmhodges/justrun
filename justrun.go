@@ -37,12 +37,13 @@ func argError(format string, obj ...interface{}) {
 }
 
 func main() {
+	flag.Usage = usage
 	flag.Parse()
 	if *help || *h {
-		usage()
+		argError("help requested")
 	}
 	if len(*command) == 0 {
-		usage()
+		argError("no command given with -c")
 	}
 	if *stdin && len(flag.Args()) != 0 {
 		argError("expected files to come in over stdin, but got paths '%s' in the commandline", strings.Join(flag.Args(), ", "))
