@@ -27,7 +27,7 @@ Examples
 
     justrun -c 'go build && ./mywebserver -https=:10443' -i mywebserver . templates/
 
-    justrun -c 'make' -w -i mylib.a,.git .
+    justrun -c 'make' -w -i mylib.a,mylib.so .
 
     find . -type d | justrun -c 'grep foobar *.h' -stdin -i .git
 
