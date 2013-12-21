@@ -75,9 +75,8 @@ The easiest way to install justrun is to put the justrun binary in [the publishe
 zipfiles][download] into your PATH. That's it! You can find all of the
 pre-built binaries at [http://projects.somethingsimilar.com/justrun/downloads/][download]
 
-Until I publish the binaries, the current way of installing justrun is to
-[install Go][installgo] (being sure to set up a working `$GOPATH`, detailed in those
-instructions), and running
+To install from source, [install Go][installgo] (being sure to set up a working
+`$GOPATH`, detailed in those instructions), and run:
 
     go get github.com/jmhodges/justrun
 
