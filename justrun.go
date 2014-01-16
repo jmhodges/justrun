@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -87,7 +88,7 @@ func main() {
 	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
 
 	sigCh := make(chan os.Signal)
-	signal.Notify(sigCh, os.Interrupt)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go waitForInterrupt(sigCh, cmd)
 
 	cmdCh := make(chan time.Time, 100)
