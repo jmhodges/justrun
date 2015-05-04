@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"path/filepath"
 	"strings"
@@ -9,7 +11,7 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) {
+func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) error {
 	ignored := make(map[string]bool)
 	ignoredDirs := make([]string, 0)
 	for _, in := range ignoredPaths {
@@ -19,7 +21,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) {
 		}
 		path, err := filepath.Abs(in)
 		if err != nil {
-			log.Fatalf("unable to get current working dir")
+			return errors.New("unable to get current working dir while working with ignored paths")
 		}
 		ignored[path] = true
 		dirPath := path
@@ -31,7 +33,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) {
 	ig := &ignorer{ignored, ignoredDirs}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	go listenForEvents(w, cmdCh, ig)
 
@@ -41,10 +43,11 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) {
 		}
 		err = w.Watch(path)
 		if err != nil {
-			log.Fatalf("unable to watch '%s': %s", path, err)
+			return fmt.Errorf("unable to watch '%s': %s", path, err)
 		}
 	}
 
+	return nil
 }
 
 func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer *ignorer) {
