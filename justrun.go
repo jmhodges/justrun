@@ -12,8 +12,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/howeyc/fsnotify"
 )
 
 var (
@@ -66,48 +64,17 @@ func main() {
 	if len(inputPaths) == 0 {
 		argError("no file paths provided to watch")
 	}
-	ignoreNames := strings.Split(*ignore, ",")
-	ignored := make(map[string]bool)
-	ignoredDirs := make([]string, 0)
-	for _, in := range ignoreNames {
-		in = strings.TrimSpace(in)
-		if len(in) == 0 {
-			continue
-		}
-		path, err := filepath.Abs(in)
-		if err != nil {
-			log.Fatalf("unable to get current working dir")
-		}
-		ignored[path] = true
-		dirPath := path
-		if path[len(path)-1] != '/' {
-			dirPath += "/"
-		}
-		ignoredDirs = append(ignoredDirs, dirPath)
-	}
-	ig := &ignorer{ignored, ignoredDirs}
+
 	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
 
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go waitForInterrupt(sigCh, cmd)
 
-	cmdCh := make(chan time.Time, 100)
-	w, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
-	go listenForEvents(w, cmdCh, ig)
+	ignoreNames := strings.Split(*ignore, ",")
 
-	for _, path := range inputPaths {
-		if ig.IsIgnored(path) {
-			continue
-		}
-		err = w.Watch(path)
-		if err != nil {
-			log.Fatalf("unable to watch '%s': %s", path, err)
-		}
-	}
+	cmdCh := make(chan time.Time, 100)
+	watch(inputPaths, ignoreNames, cmdCh)
 
 	lastStartTime := time.Unix(0, 0)
 	done := make(chan error)
@@ -218,24 +185,4 @@ func (ig *ignorer) IsIgnored(path string) bool {
 		}
 	}
 	return false
-}
-
-func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignorer *ignorer) {
-	for {
-		select {
-		case ev := <-w.Event:
-			if ignorer.IsIgnored(ev.Name) {
-				continue
-			}
-			if *verbose {
-				log.Printf("file changed: %s", ev)
-			}
-			if ev.IsRename() {
-				w.Watch(ev.Name)
-			}
-			cmdCh <- time.Now()
-		case err := <-w.Error:
-			log.Println("error:", err)
-		}
-	}
 }
