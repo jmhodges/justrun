@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/howeyc/fsnotify"
 	"log"
 	"os"
 	"os/signal"
@@ -13,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/howeyc/fsnotify"
 )
 
 var (
@@ -107,6 +108,7 @@ func main() {
 			log.Fatalf("unable to watch '%s': %s", path, err)
 		}
 	}
+
 	lastStartTime := time.Unix(0, 0)
 	done := make(chan error)
 	wasDelayed := false
@@ -144,7 +146,7 @@ func reload(cmd *cmdWrapper, done chan error, lastStartTime *time.Time) {
 }
 
 func runCommand(cmd *cmdWrapper, done chan error) {
-	log.Printf("running '%s'\n",  *command)
+	log.Printf("running '%s'\n", *command)
 	err := cmd.Start()
 	if err != nil {
 		log.Printf("command failed: %s", err)
@@ -227,6 +229,9 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan time.Time, ignorer *ignorer
 			}
 			if *verbose {
 				log.Printf("file changed: %s", ev)
+			}
+			if ev.IsRename() {
+				w.Watch(ev.Name)
 			}
 			cmdCh <- time.Now()
 		case err := <-w.Error:
