@@ -242,10 +242,12 @@ func watchTest(fs *fileSystem, inputPaths, ignoredPaths []string, cmdCh chan<- t
 
 func newFS(t *testing.T) *fileSystem {
 	name, err := ioutil.TempDir("", "justrun_tests_")
+	subdir := filepath.Join(name, "subdir_for_fds")
+	os.MkdirAll(subdir, 0700)
 	if err != nil {
 		t.Fatalf("unable to create temporary directory")
 	}
-	return &fileSystem{name: name, t: t}
+	return &fileSystem{name: subdir, t: t}
 }
 
 type fileSystem struct {
