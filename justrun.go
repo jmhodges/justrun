@@ -135,17 +135,18 @@ func shutdownCommand(cmd *cmdWrapper, done chan error) {
 		return
 	}
 
-waitOrRetry:
+	// If terminate claims to succeed, we want to make sure the done
+	// message came across. If the done message doesn't come, the OS
+	// lied to us, the process hasn't really died (yet), and we need
+	// to wait for it to die or retry the termination.
+waitForShutdownOrRetry:
 	select {
 	case <-done:
 		break
 	case <-time.After(300 * time.Millisecond):
 		err := cmd.Terminate()
 		if err == nil {
-			// If terminate claims to succeed, we want to make sure the done
-			// message came across. If the done message doesn't come, the
-			// process didn't die anad we need to try terminating again.
-			goto waitOrRetry
+			goto waitForShutdownOrRetry
 		}
 		break
 	}

@@ -41,10 +41,11 @@ func (cw *cmdWrapper) Terminate() error {
 	if cw.cmd == nil {
 		return errors.New("not started")
 	}
-	// The negation here means to kill not just the parent pid (which is the
-	// bash shell), but also its children. This means long-lived servers can
-	// be killed as well quickly exiting processes. e.g. "go build &&
-	// ./myserver -http=:6000". fswatch and others won't do this.
+	// The negation here means to kill, not just the parent pid (which
+	// is the bash shell), but also its children. This means that even
+	// long-lived servers can be gently killed (e.g "-c 'go
+	// build && ./myserver -http=:6000'"). fswatch and other systems
+	// can't do this.
 	return syscall.Kill(-cw.cmd.Process.Pid, syscall.SIGTERM)
 }
 
