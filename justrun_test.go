@@ -128,7 +128,6 @@ func TestNoSubdirRecursionWithoutGlobs(t *testing.T) {
 }
 
 func TestRenameFile(t *testing.T) {
-	t.Skip()
 	fs := newFS(t)
 
 	fs.Create("foobar")
@@ -141,7 +140,6 @@ func TestRenameFile(t *testing.T) {
 }
 
 func TestRenameDir(t *testing.T) {
-	t.Skip()
 	fs := newFS(t)
 
 	fs.MkdirAll("foodir")
@@ -269,7 +267,7 @@ func (fs *fileSystem) MkdirAll(path string) {
 	fullName := filepath.Join(fs.name, path)
 	err := os.MkdirAll(fullName, 0700)
 	if err != nil {
-		fs.t.Fatal("unable to create directory '%s' in '%s': %#v", path, fs.name, err)
+		fs.t.Fatalf("unable to create directory '%s' in '%s': %#v", path, fs.name, err)
 	}
 }
 
@@ -315,6 +313,6 @@ func (fs *fileSystem) ChangeContents(path string) {
 func (fs *fileSystem) Close() {
 	err := os.RemoveAll(fs.name)
 	if err != nil {
-		fs.t.Errorf("unable to delete directory '%s'", fs.name)
+		fs.t.Fatalf("unable to delete directory '%s'", fs.name)
 	}
 }

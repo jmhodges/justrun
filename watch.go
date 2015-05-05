@@ -37,6 +37,8 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 	if err != nil {
 		return nil, err
 	}
+
+	userPaths := make(map[string]bool)
 	includedHiddenFiles := make(map[string]bool)
 	for _, path := range inputPaths {
 		fullPath, err := filepath.Abs(path)
@@ -47,17 +49,47 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 		if ui.IsIgnored(path) {
 			continue
 		}
-		err = w.Watch(path)
+		err = w.Watch(fullPath)
 		if err != nil {
 			w.Close()
 			return nil, fmt.Errorf("unable to watch '%s': %s", path, err)
 		}
+		// only to be used for explicit file paths the user gave us, not any future magic globbing.
+		userPaths[fullPath] = true
 		baseName := filepath.Base(fullPath)
 		if strings.HasPrefix(baseName, ".") {
 			includedHiddenFiles[fullPath] = true
 		}
 	}
 	ig := &smartIgnorer{includedHiddenFiles: includedHiddenFiles, ui: ui}
+
+	// Folks might want to watch only "foobar" but their tooling moves
+	// foobar away and then back (like vim). This will cause the watch
+	// to fire on the first move and never again. So, we have to track
+	// the parent directory of foobar in order to capture when foobar
+	// shows up in its parent directory again but we don't want to
+	// send all events in that parent directory.
+
+	renameDirs := make(map[string]bool)
+	renameChildren := make(map[string]bool)
+	for fpath, _ := range userPaths {
+		dirPath := filepath.Dir(fpath)
+		if !userPaths[dirPath] {
+			renameDirs[dirPath] = true
+			renameChildren[fpath] = true
+		}
+		err = w.Watch(dirPath)
+		if err != nil {
+			w.Close()
+			return nil, fmt.Errorf("unable to watch rename-watched-only dir '%s': %s", fpath, err)
+		}
+	}
+	ig := &smartIgnorer{
+		includedHiddenFiles: includedHiddenFiles,
+		ui:                  ui,
+		renameDirs:          renameDirs,
+		renameChildren:      renameChildren,
+	}
 
 	go listenForEvents(w, cmdCh, ig)
 	return w, nil
@@ -75,7 +107,7 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer Ignore
 				continue
 			}
 			if *verbose {
-				log.Printf("file changed: %s", ev)
+				log.Printf("filtered file change: %s", ev)
 			}
 			cmdCh <- time.Now()
 		case err := <-w.Error:
