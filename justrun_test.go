@@ -39,12 +39,13 @@ func TestSimpleWatch(t *testing.T) {
 
 func TestSimpleDirWatch(t *testing.T) {
 	fs := newFS(t)
-	fs.MkdirAll("dir1")
+	fs.MkdirAll("simpleDir1")
 	ch := make(chan time.Time, 10)
-	cleanUp := watchTest(fs, []string{fs.Abs("dir1")}, []string{}, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs("simpleDir1")}, []string{}, ch)
 	defer cleanUp()
-	fs.Create("dir1/foobar")
-	seeCreation(fs, ch, "dir1/foobar")
+
+	fs.Create("simpleDir1/foobar")
+	seeCreation(fs, ch, "simpleDir1/foobar")
 }
 
 func TestCurrentDirWorks(t *testing.T) {
