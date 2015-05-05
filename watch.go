@@ -61,7 +61,6 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 			includedHiddenFiles[fullPath] = true
 		}
 	}
-	ig := &smartIgnorer{includedHiddenFiles: includedHiddenFiles, ui: ui}
 
 	// Folks might want to watch only "foobar" but their tooling moves
 	// foobar away and then back (like vim). This will cause the watch
