@@ -18,10 +18,10 @@ recursively. When playing tricks like this, use the ignored file list
 option (`-i`) wisely. If not, you'll accidentally watch files that
 your command touch, and put your commands into an infinite loop.
 
-Justrun does kill the child processes of the bash command run by it to end the
-lifecycles of long-lived (that is, server) processes. If you do not want
-justrun to wait for the commands to finish instead, add the `-w` argument to
-the commandline.
+Justrun does kill the child processes of the bash command run by it to
+end the lifecycles of long-lived (that is, server) processes. If want
+justrun to wait for the commands to finish before checking for more
+filesystem changes, add the `-w` argument to the commandline.
 
 Examples
 --------
