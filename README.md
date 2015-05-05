@@ -12,8 +12,8 @@ option in the [Usage section][usage].
 
 When a directory is passed in as an argument, justrun will watch all
 files in that directory, but does not recurse into subdirectories. If
-you need that recursion, a trick you can pull is using `find . -type
-d` and the `-stdin` option to include all directories
+you need that recursion, a trick you can pull is using `find . -type d`
+and the `-stdin` option to include all directories
 recursively. When playing tricks like this, use the ignored file list
 option (`-i`) wisely. If not, you'll accidentally watch files that
 your command touch, and put your commands into an infinite loop.
@@ -28,7 +28,7 @@ Examples
 
     justrun -c 'go build && ./mywebserver -https=:10443' -i mywebserver . templates/
 
-    justrun -c 'make' -w -i mylib.a,mylib.so .
+    justrun -c 'make' -w -i mylib.a -i mylib.so .
 
     find . -type d | justrun -c 'grep foobar *.h' -stdin -i .git
 
@@ -42,15 +42,17 @@ Usage
 -----
 
     $  justrun -h
+    justrun: help requested
     usage: justrun -c 'SOME BASH COMMAND' [FILEPATH]*
       -c="": command to run when files change in given directories
       -delay=750ms: the time to wait between runs of the command if many fs events occur
       -h=false: print this help text
       -help=false: print this help text
-      -i="": comma-separated list of files to ignore
+      -i=[]: a file path to ignore events from (may be given multiple times)
       -stdin=false: read list of files to track from stdin, not the command-line
       -v=false: verbose output
       -w=false: wait for the command to finish and do not attempt to kill it
+
 
 Compared to other tools
 -----------------------
@@ -96,8 +98,9 @@ a SIGINT.
 Justrun currently only supports the bash shell, but, with some thought, a
 shell configuration option could be provided. Pull requests welcome.
 
-The `-i` argument being a comma-separated list is gross. I've not found a
-better mechanism, yet. Globbing in it may help. Pull requests welcome.
+The `-i` argument is no longer required to be a comma-separated list,
+but it would be nice for more complicated systems to have an easier
+way to configure ignore lists.
 
 It's fairly easy to accidentally cause a cycle in your commands and the
 filesystem watches. Files or directories that will be touched or created by

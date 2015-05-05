@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -17,7 +18,7 @@ var (
 	help           = flag.Bool("help", false, "print this help text")
 	h              = flag.Bool("h", false, "print this help text")
 	command        = flag.String("c", "", "command to run when files change in given directories")
-	ignore         = flag.String("i", "", "comma-separated list of files to ignore")
+	ignoreFlag     pathsFlag
 	stdin          = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")
 	waitForCommand = flag.Bool("w", false, "wait for the command to finish and do not attempt to kill it")
 	delayDur       = flag.Duration("delay", 750*time.Millisecond, "the time to wait between runs of the command if many fs events occur")
@@ -36,6 +37,7 @@ func argError(format string, obj ...interface{}) {
 }
 
 func main() {
+	flag.Var(&ignoreFlag, "i", "a file path to ignore events from (may be given multiple times)")
 	flag.Usage = usage
 	flag.Parse()
 	if *help || *h {
@@ -70,10 +72,8 @@ func main() {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go waitForInterrupt(sigCh, cmd)
 
-	ignoreNames := strings.Split(*ignore, ",")
-
 	cmdCh := make(chan time.Time, 100)
-	watch(inputPaths, ignoreNames, cmdCh)
+	watch(inputPaths, ignoreFlag, cmdCh)
 
 	lastStartTime := time.Unix(0, 0)
 	done := make(chan error)
@@ -164,4 +164,27 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	if err != nil {
 		log.Printf("on interrupt, unable to kill command: %s", err)
 	}
+}
+
+type pathsFlag []string
+
+func (pf *pathsFlag) String() string {
+	return fmt.Sprint(*pf)
+}
+func (pf *pathsFlag) Set(value string) error {
+	// TODO(jmhodges): remove comma Split in 2.0
+	// Only for backwards compatibilty with old -i
+	vals := strings.Split(value, ",")
+	before := len(*pf)
+	for _, p := range vals {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		*pf = append(*pf, p)
+	}
+	if before == len(*pf) {
+		return errors.New("a file path may not be blank")
+	}
+	return nil
 }
