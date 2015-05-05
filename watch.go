@@ -35,7 +35,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create watcher: %s", err)
 	}
 
 	userPaths := make(map[string]bool)
@@ -73,14 +73,16 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 	renameChildren := make(map[string]bool)
 	for fpath, _ := range userPaths {
 		dirPath := filepath.Dir(fpath)
-		if !userPaths[dirPath] {
+		if !userPaths[dirPath] && dirPath != "" {
+			if !renameDirs[dirPath] {
+				err = w.Watch(dirPath)
+				if err != nil {
+					w.Close()
+					return nil, fmt.Errorf("unable to watch rename-watched-only dir '%s': %s", fpath, err)
+				}
+			}
 			renameDirs[dirPath] = true
 			renameChildren[fpath] = true
-		}
-		err = w.Watch(dirPath)
-		if err != nil {
-			w.Close()
-			return nil, fmt.Errorf("unable to watch rename-watched-only dir '%s': %s", fpath, err)
 		}
 	}
 	ig := &smartIgnorer{
