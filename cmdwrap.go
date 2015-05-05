@@ -22,7 +22,7 @@ func (cw *cmdWrapper) Start() error {
 	defer cw.Unlock()
 	cmd := exec.Command("bash", "-c", *command)
 	// Necessary so that the SIGTERM's in Terminate will traverse down to the
-	// the child processes in the bash command below.
+	// the child processes in the bash command above.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

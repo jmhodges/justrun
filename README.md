@@ -6,16 +6,17 @@ when those files change. Unlike similar tools, it will terminate the running
 command and rerun it if more filesystem events occur. This makes it ideal for
 testing servers. (For instance, a web server whose templates you are editing.)
 
-When a directory is passed in a file path, justrun will watch all files in
-that directory, but does not recurse into subdirectories. A nice trick you can
-pull is using `find . -type d` and the `-stdin` option to include all
-directories recursively. When playing tricks like this, use the ignored file
-list option (`-i`) wisely. If not, you'll accidentally watch files that your
-command touch, and put your commands into an infinite loop.
-
 Justrun also lets you say how long to wait before running the command again,
 even if filesystem events have occurred in the meantime. See the `-delay`
 option in the [Usage section][usage].
+
+When a directory is passed in as an argument, justrun will watch all
+files in that directory, but does not recurse into subdirectories. If
+you need that recursion, a trick you can pull is using `find . -type
+d` and the `-stdin` option to include all directories
+recursively. When playing tricks like this, use the ignored file list
+option (`-i`) wisely. If not, you'll accidentally watch files that
+your command touch, and put your commands into an infinite loop.
 
 Justrun does kill the child processes of the bash command run by it to end the
 lifecycles of long-lived (that is, server) processes. If you do not want
