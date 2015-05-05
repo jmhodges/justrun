@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -164,25 +163,4 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	if err != nil {
 		log.Printf("on interrupt, unable to kill command: %s", err)
 	}
-}
-
-type ignorer struct {
-	ignored     map[string]bool
-	ignoredDirs []string
-}
-
-func (ig *ignorer) IsIgnored(path string) bool {
-	en, err := filepath.Abs(path)
-	if err != nil {
-		log.Fatalf("unable to get current working dir")
-	}
-	if ig.ignored[en] {
-		return true
-	}
-	for _, dir := range ig.ignoredDirs {
-		if strings.HasPrefix(en, dir) {
-			return true
-		}
-	}
-	return false
 }

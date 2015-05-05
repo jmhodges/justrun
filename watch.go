@@ -11,7 +11,7 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) error {
+func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify.Watcher, error) {
 	ignored := make(map[string]bool)
 	ignoredDirs := make([]string, 0)
 	for _, in := range ignoredPaths {
@@ -21,7 +21,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) error {
 		}
 		path, err := filepath.Abs(in)
 		if err != nil {
-			return errors.New("unable to get current working dir while working with ignored paths")
+			return nil, errors.New("unable to get current working dir while working with ignored paths")
 		}
 		ignored[path] = true
 		dirPath := path
@@ -30,30 +30,47 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) error {
 		}
 		ignoredDirs = append(ignoredDirs, dirPath)
 	}
-	ig := &ignorer{ignored, ignoredDirs}
+
+	ui := &userIgnorer{ignored, ignoredDirs}
+
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	go listenForEvents(w, cmdCh, ig)
-
+	includedHiddenFiles := make(map[string]bool)
 	for _, path := range inputPaths {
-		if ig.IsIgnored(path) {
+		fullPath, err := filepath.Abs(path)
+		if err != nil {
+			w.Close()
+			return nil, errors.New("unable to get current working directory while working with user-watched paths")
+		}
+		if ui.IsIgnored(path) {
 			continue
 		}
 		err = w.Watch(path)
 		if err != nil {
-			return fmt.Errorf("unable to watch '%s': %s", path, err)
+			w.Close()
+			return nil, fmt.Errorf("unable to watch '%s': %s", path, err)
+		}
+		baseName := filepath.Base(fullPath)
+		if strings.HasPrefix(baseName, ".") {
+			includedHiddenFiles[fullPath] = true
 		}
 	}
+	ig := &smartIgnorer{includedHiddenFiles: includedHiddenFiles, ui: ui}
 
-	return nil
+	go listenForEvents(w, cmdCh, ig)
+	return w, nil
 }
 
-func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer *ignorer) {
+func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer Ignorer) {
 	for {
 		select {
 		case ev := <-w.Event:
+			// w.Close causes this.
+			if ev == nil {
+				return
+			}
 			if ignorer.IsIgnored(ev.Name) {
 				continue
 			}
@@ -62,7 +79,10 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer *ignor
 			}
 			cmdCh <- time.Now()
 		case err := <-w.Error:
-			log.Println("error:", err)
+			if err == nil {
+				return
+			}
+			log.Println("watch error:", err)
 		}
 	}
 }

@@ -16,10 +16,10 @@ const waitForMsg = 2 * time.Second
 // Slow in the success case
 func TestNoWatchingCreation(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.Create("foobar")
 	ch := make(chan time.Time, 10)
-	watchTest(t, []string{fs.Abs("foobar")}, []string{}, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs("foobar")}, []string{}, ch)
+	defer cleanUp()
 	fs.Create("baz")
 	seeNothing(fs, ch, "creation of baz")
 }
@@ -27,10 +27,10 @@ func TestNoWatchingCreation(t *testing.T) {
 // Slow in the success case
 func TestSimpleWatch(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.Create("foobar")
 	ch := make(chan time.Time, 10)
-	watchTest(t, []string{fs.Abs("foobar")}, []string{fs.Abs("baz")}, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs("foobar")}, []string{fs.Abs("baz")}, ch)
+	defer cleanUp()
 	fs.ChangeContents("foobar")
 	seeChangeContents(fs, ch, "foobar")
 	fs.Create("baz")
@@ -39,20 +39,20 @@ func TestSimpleWatch(t *testing.T) {
 
 func TestSimpleDirWatch(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.MkdirAll("dir1")
 	ch := make(chan time.Time, 10)
-	watchTest(t, []string{fs.Abs("dir1")}, []string{}, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs("dir1")}, []string{}, ch)
+	defer cleanUp()
 	fs.Create("dir1/foobar")
 	seeCreation(fs, ch, "dir1/foobar")
 }
 
 func TestCurrentDirWorks(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.Create("foobar")
 	ch := make(chan time.Time, 10)
-	watchTest(t, []string{fs.Abs(".")}, nil, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs(".")}, nil, ch)
+	defer cleanUp()
 	fs.ChangeContents("foobar")
 	seeChangeContents(fs, ch, "foobar")
 	fs.Create("baz")
@@ -62,16 +62,16 @@ func TestCurrentDirWorks(t *testing.T) {
 // Slow in the success case
 func TestIgnoredDir(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.Create("foobar")
 	fs.MkdirAll("existdir/quuxdir")
 	ch := make(chan time.Time, 10)
-	watchTest(t, []string{fs.Abs(".")},
+	cleanUp := watchTest(fs, []string{fs.Abs(".")},
 		[]string{
 			fs.Abs("bardir"),
 			fs.Abs("existdir"),
 		},
 		ch)
+	defer cleanUp()
 
 	fs.MkdirAll("bardir")
 	fs.Create("bardir/barfile")
@@ -86,14 +86,13 @@ func TestIgnoredDir(t *testing.T) {
 // Slow in the success case
 func TestIgnoredDirOverlap(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.Create("foobar")
 	fs.MkdirAll("existdir/quuxdir")
 	ch := make(chan time.Time, 10)
 	// The existdir and existdir/quuxdir cases seem silly but can
 	// happen accidentally in shell globbing. Better to be consistent
 	// about it.
-	watchTest(t,
+	cleanUp := watchTest(fs,
 		[]string{
 			fs.Abs("."),
 			fs.Abs("bardir"),
@@ -104,6 +103,7 @@ func TestIgnoredDirOverlap(t *testing.T) {
 			fs.Abs("existdir/quuxdir"),
 		},
 		ch)
+	defer cleanUp()
 
 	fs.MkdirAll("bardir")
 	fs.Create("bardir/barfile")
@@ -117,10 +117,10 @@ func TestIgnoredDirOverlap(t *testing.T) {
 
 func TestNoSubdirRecursionWithoutGlobs(t *testing.T) {
 	fs := newFS(t)
-	defer fs.Cleanup()
 	fs.MkdirAll("some_dir")
 	ch := make(chan time.Time, 10)
-	watchTest(t, []string{fs.Abs(".")}, nil, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs(".")}, nil, ch)
+	defer cleanUp()
 
 	fs.Create("some_dir/level1")
 	seeNothing(fs, ch, "creation in level1")
@@ -129,12 +129,12 @@ func TestNoSubdirRecursionWithoutGlobs(t *testing.T) {
 func TestRenameFile(t *testing.T) {
 	t.Skip()
 	fs := newFS(t)
-	defer fs.Cleanup()
 
 	fs.Create("foobar")
 	ch := make(chan time.Time, 10)
 
-	watchTest(t, []string{fs.Abs("foobar")}, []string{}, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs("foobar")}, []string{}, ch)
+	defer cleanUp()
 	renameTest(fs, ch, "foobar", "baz")
 	renameTest(fs, ch, "baz", "foobar")
 }
@@ -142,13 +142,13 @@ func TestRenameFile(t *testing.T) {
 func TestRenameDir(t *testing.T) {
 	t.Skip()
 	fs := newFS(t)
-	defer fs.Cleanup()
 
 	fs.MkdirAll("foodir")
 	fs.Create("foodir/foobar")
 	ch := make(chan time.Time, 10)
 
-	watchTest(t, []string{fs.Abs("foodir/foobar")}, []string{}, ch)
+	cleanUp := watchTest(fs, []string{fs.Abs("foodir/foobar")}, []string{}, ch)
+	defer cleanUp()
 	renameTest(fs, ch, "foodir/foobar", "baz")
 	renameTest(fs, ch, "baz", "foodir/foobar")
 	renameTest(fs, ch, "foodir", "bardir")
@@ -156,6 +156,28 @@ func TestRenameDir(t *testing.T) {
 	// fsnotify provides or watching every dang directory in the
 	// entiry absolute path.
 	// renameTest(fs, ch, "bardir", "foodir")
+}
+
+func TestHiddenFilesHiddenByDefault(t *testing.T) {
+	fs := newFS(t)
+	fs.MkdirAll("hDir1")
+	fs.Create("hDir1/.hidden")
+	fs.MkdirAll("hDir2")
+	fs.MkdirAll("hDir3")
+	fs.Create("hDir3/.hiddenAndIgnored")
+	ch := make(chan time.Time, 10)
+	cleanUp := watchTest(fs,
+		[]string{fs.Abs("hDir1/.hidden"), fs.Abs("hDir2")},
+		[]string{fs.Abs("hDir3/.hiddenAndIgnored")},
+		ch)
+	defer cleanUp()
+
+	fs.ChangeContents("hDir1/.hidden")
+	seeChangeContents(fs, ch, "hDir1/.hidden")
+	fs.Create("hDir2/.hidden")
+	seeNothing(fs, ch, "no hidden file creation")
+	fs.ChangeContents("hDir3/.hiddenAndIgnored")
+	seeNothing(fs, ch, "no event for changes to hDir3/.hiddenAndIgnored")
 }
 
 func renameTest(fs *fileSystem, ch <-chan time.Time, oldpath, newpath string) {
@@ -207,10 +229,15 @@ func seeChangeContents(fs *fileSystem, ch <-chan time.Time, path string) {
 	}
 }
 
-func watchTest(t *testing.T, inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) {
-	err := watch(inputPaths, ignoredPaths, cmdCh)
+func watchTest(fs *fileSystem, inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) func() {
+	w, err := watch(inputPaths, ignoredPaths, cmdCh)
 	if err != nil {
-		t.Fatalf("unable to run watch: %#v", err)
+		fs.t.Fatalf("unable to run watch: %#v", err)
+		return func() {}
+	}
+	return func() {
+		w.Close()
+		fs.Close()
 	}
 }
 
@@ -229,7 +256,8 @@ type fileSystem struct {
 
 func (fs *fileSystem) Create(path string) {
 	fullName := filepath.Join(fs.name, path)
-	f, err := os.Create(fullName)
+	// O_SYNC is important
+	f, err := os.OpenFile(fullName, os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_SYNC, 0666)
 	if err != nil {
 		fs.t.Fatalf("unable to create '%s' in '%s': %#v", path, fs.name, err)
 	}
@@ -283,7 +311,7 @@ func (fs *fileSystem) ChangeContents(path string) {
 	}
 }
 
-func (fs *fileSystem) Cleanup() {
+func (fs *fileSystem) Close() {
 	err := os.RemoveAll(fs.name)
 	if err != nil {
 		fs.t.Errorf("unable to delete directory '%s'", fs.name)
