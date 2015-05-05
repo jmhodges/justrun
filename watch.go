@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/howeyc/fsnotify"
+	"github.com/jmhodges/justrun/Godeps/_workspace/src/github.com/howeyc/fsnotify"
 )
 
 func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify.Watcher, error) {
