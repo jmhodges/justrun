@@ -75,10 +75,9 @@ func main() {
 	cmdCh := make(chan time.Time, 100)
 	watch(inputPaths, ignoreFlag, cmdCh)
 
-	lastStartTime := time.Unix(0, 0)
 	done := make(chan error)
 	wasDelayed := false
-	reload(cmd, done, &lastStartTime)
+	lastStartTime := reload(cmd, done)
 	tick := time.NewTicker(*delayDur)
 	for {
 		select {
@@ -94,21 +93,22 @@ func main() {
 				continue
 			}
 			wasDelayed = false
-			reload(cmd, done, &lastStartTime)
+			lastStartTime = reload(cmd, done)
 			tick = time.NewTicker(*delayDur)
 		case <-tick.C:
 			if wasDelayed {
 				wasDelayed = false
-				reload(cmd, done, &lastStartTime)
+				lastStartTime = reload(cmd, done)
 			}
 		}
 	}
 }
 
-func reload(cmd *cmdWrapper, done chan error, lastStartTime *time.Time) {
+func reload(cmd *cmdWrapper, done chan error) time.Time {
 	shutdownCommand(cmd, done)
-	*lastStartTime = time.Now()
+	lastStartTime := time.Now()
 	runCommand(cmd, done)
+	return lastStartTime
 }
 
 func runCommand(cmd *cmdWrapper, done chan error) {
@@ -158,12 +158,12 @@ waitForShutdownOrRetry:
 }
 
 func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
-	defer os.Exit(0)
 	<-sigCh
 	err := cmd.Terminate()
 	if err != nil {
 		log.Printf("on interrupt, unable to kill command: %s", err)
 	}
+	os.Exit(0)
 }
 
 type pathsFlag []string
@@ -171,6 +171,7 @@ type pathsFlag []string
 func (pf *pathsFlag) String() string {
 	return fmt.Sprint(*pf)
 }
+
 func (pf *pathsFlag) Set(value string) error {
 	// TODO(jmhodges): remove comma Split in 2.0
 	// Only for backwards compatibilty with old -i

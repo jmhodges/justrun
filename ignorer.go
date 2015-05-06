@@ -5,10 +5,17 @@ import (
 	"strings"
 )
 
+// Ignorer tells us whether or not the file that an event was from is
+// one that the user wanted to trigger their command.
 type Ignorer interface {
+	// IsIgnored returns true if an event from the given file path
+	// should be ignored.
 	IsIgnored(path string) bool
 }
 
+// userIgnorer is an Ignorer that compares the given path only to the
+// ignored paths a user specified. If the given path is the same as or
+// a child of one of those user-specified paths, true is returned.
 type userIgnorer struct {
 	ignored     map[string]bool
 	ignoredDirs []string
@@ -26,6 +33,11 @@ func (ug *userIgnorer) IsIgnored(path string) bool {
 	return false
 }
 
+// smartIgnorer is an Ignorer that looks at whether the file is a
+// dot-file and the user didn't ask to watch it specifically, or if it
+// was only included by justrun in order to track a child path the
+// user asked for. In either case, it will say that the path is
+// ignored.
 type smartIgnorer struct {
 	includedHiddenFiles map[string]bool
 	ui                  *userIgnorer
