@@ -75,9 +75,9 @@ func main() {
 	cmdCh := make(chan time.Time, 100)
 	watch(inputPaths, ignoreFlag, cmdCh)
 
-	done := make(chan error)
 	wasDelayed := false
-	lastStartTime := reload(cmd, done)
+	done := make(chan error) // first instance is unused but needed for now
+	lastStartTime, done := reload(cmd, done)
 	tick := time.NewTicker(*delayDur)
 	for {
 		select {
@@ -93,40 +93,41 @@ func main() {
 				continue
 			}
 			wasDelayed = false
-			lastStartTime = reload(cmd, done)
+			lastStartTime, done = reload(cmd, done)
 			tick = time.NewTicker(*delayDur)
 		case <-tick.C:
 			if wasDelayed {
 				wasDelayed = false
-				lastStartTime = reload(cmd, done)
+				lastStartTime, done = reload(cmd, done)
 			}
 		}
 	}
 }
 
-func reload(cmd *cmdWrapper, done chan error) time.Time {
+func reload(cmd *cmdWrapper, done chan error) (time.Time, chan error) {
 	shutdownCommand(cmd, done)
 	lastStartTime := time.Now()
-	runCommand(cmd, done)
-	return lastStartTime
+	return lastStartTime, runCommand(cmd)
 }
 
-func runCommand(cmd *cmdWrapper, done chan error) {
+func runCommand(cmd *cmdWrapper) chan error {
 	log.Printf("running '%s'\n", *command)
 	err := cmd.Start()
 	if err != nil {
 		log.Printf("command failed: %s", err)
-		return
+		return nil
 	}
+	done := make(chan error)
 	if *waitForCommand {
 		err := cmd.Wait()
 		go func() { done <- err }()
-		return
+		return done
 	}
 	go func() {
 		err := cmd.Wait()
 		done <- err
 	}()
+	return done
 }
 
 func shutdownCommand(cmd *cmdWrapper, done chan error) {
