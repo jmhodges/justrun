@@ -164,6 +164,7 @@ func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	if err != nil {
 		log.Printf("on interrupt, unable to kill command: %s", err)
 	}
+	cmd.Wait()
 	os.Exit(0)
 }
 
