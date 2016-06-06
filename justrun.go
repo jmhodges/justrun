@@ -105,7 +105,10 @@ func main() {
 }
 
 func reload(cmd *cmdWrapper, done chan error) (time.Time, chan error) {
-	shutdownCommand(cmd, done)
+	if cmd.cmd != nil {
+		// If there's something to shut down, shut it down.
+		shutdownCommand(cmd, done)
+	}
 	lastStartTime := time.Now()
 	return lastStartTime, runCommand(cmd)
 }
@@ -132,24 +135,21 @@ func runCommand(cmd *cmdWrapper) chan error {
 
 func shutdownCommand(cmd *cmdWrapper, done chan error) {
 	err := cmd.Terminate()
-	if err != nil {
+	if err == syscall.ESRCH {
 		return
 	}
 
-	// If terminate claims to succeed, we want to make sure the done
-	// message came across. If the done message doesn't come, the OS
-	// lied to us, the process hasn't really died (yet), and we need
-	// to wait for it to die or retry the termination.
-waitForShutdownOrRetry:
-	select {
-	case <-done:
-		break
-	case <-time.After(300 * time.Millisecond):
-		err := cmd.Terminate()
-		if err == nil {
-			goto waitForShutdownOrRetry
+	// Done is sent to after the command's Wait call returns. But it's really a
+	// latency optimization (or spin-loop prevention) over polling the process
+	// with Terminate until the process stops existing (when syscall.ESRCH
+	// will be returned).
+	for err != syscall.ESRCH {
+		select {
+		case <-done:
+			break
+		case <-time.After(300 * time.Millisecond):
+			err = cmd.Terminate()
 		}
-		break
 	}
 	msg := "terminating current command"
 	if *verbose {
