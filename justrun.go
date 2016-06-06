@@ -161,6 +161,9 @@ func shutdownCommand(cmd *cmdWrapper, done chan error) {
 func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	<-sigCh
 	done := make(chan error)
+	go func() {
+		done <- cmd.Wait()
+	}()
 	shutdownCommand(cmd, done)
 	os.Exit(0)
 }
