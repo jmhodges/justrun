@@ -160,11 +160,8 @@ func shutdownCommand(cmd *cmdWrapper, done chan error) {
 
 func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
 	<-sigCh
-	err := cmd.Terminate()
-	if err != nil {
-		log.Printf("on interrupt, unable to kill command: %s", err)
-	}
-	cmd.Wait()
+	done := make(chan error)
+	shutdownCommand(cmd, done)
 	os.Exit(0)
 }
 
