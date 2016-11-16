@@ -1,11 +1,19 @@
 {
 	"ImportPath": "github.com/jmhodges/justrun",
-	"GoVersion": "devel +23ce80e Mon Apr 27 20:54:34 2015 +0000",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Packages": [
+		"."
+	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/howeyc/fsnotify",
-			"Comment": "v0.9.0-14-g4894fe7",
-			"Rev": "4894fe7efedeeef21891033e1cce3b23b9af7ad2"
+			"ImportPath": "github.com/fsnotify/fsnotify",
+			"Comment": "v1.3.0",
+			"Rev": "30411dbcefb7a1da7e84f75530ad3abe4011b4f8"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "b776ec39b3e54652e09028aaaaac9757f4f8211a"
 		}
 	]
 }
