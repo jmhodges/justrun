@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -173,6 +174,10 @@ func TestHiddenFilesHiddenByDefault(t *testing.T) {
 
 	fs.ChangeContents("hDir1/.hidden")
 	seeChangeContents(fs, ch, "hDir1/.hidden")
+	// TravisCI watches emit more change events than we normally expect.
+	if runtime.GOOS == "linux" && os.Getenv("TRAVIS") == "true" {
+		seeChangeContents(fs, ch, "hDir1/.hidden")
+	}
 	fs.Create("hDir2/.hidden")
 	seeNothing(fs, ch, "no hidden file creation")
 	fs.ChangeContents("hDir3/.hiddenAndIgnored")
