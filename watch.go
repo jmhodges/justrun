@@ -13,7 +13,7 @@ import (
 
 // watch watchers the input paths. The returned Watcher should only be used in
 // tests.
-func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify.Watcher, error) {
+func watch(inputPaths, ignoredPaths []string, cmdCh chan<- event) (*fsnotify.Watcher, error) {
 
 	// Creates an Ignorer that just ignores file paths the user
 	// specifically asked to be ignored.
@@ -98,7 +98,12 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 	return w, nil
 }
 
-func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer Ignorer) {
+type event struct {
+	time.Time
+	fsnotify.Event
+}
+
+func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- event, ignorer Ignorer) {
 	for {
 		select {
 		case ev, ok := <-w.Events:
@@ -111,7 +116,11 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer Ignore
 			if *verbose {
 				log.Printf("filtered file change: %s", ev)
 			}
-			cmdCh <- time.Now()
+			cmdCh <- event{
+				Time:  time.Now(),
+				Event: ev,
+			}
+
 		case err := <-w.Errors:
 			log.Println("watch error:", err)
 		}

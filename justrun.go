@@ -72,7 +72,7 @@ func main() {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go waitForInterrupt(sigCh, cmd)
 
-	cmdCh := make(chan time.Time, 100)
+	cmdCh := make(chan event, 100)
 	_, err := watch(inputPaths, ignoreFlag, cmdCh)
 	if err != nil {
 		log.Fatal(err)
@@ -84,14 +84,14 @@ func main() {
 	tick := time.NewTicker(*delayDur)
 	for {
 		select {
-		case t := <-cmdCh:
-			if lastStartTime.After(t) {
+		case ev := <-cmdCh:
+			if lastStartTime.After(ev.Time) {
 				continue
 			}
 			// Using delayDur here and in NewTicker is slightly semantically
 			// incorrect, but it simplifies our config and prevents the
 			// egregious reloading.
-			if time.Now().Sub(t) < *delayDur {
+			if time.Now().Sub(ev.Time) < *delayDur {
 				wasDelayed = true
 				continue
 			}
