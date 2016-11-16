@@ -8,9 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmhodges/justrun/Godeps/_workspace/src/github.com/howeyc/fsnotify"
+	"github.com/fsnotify/fsnotify"
 )
 
+// watch watchers the input paths. The returned Watcher should only be used in
+// tests.
 func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify.Watcher, error) {
 
 	// Creates an Ignorer that just ignores file paths the user
@@ -39,7 +41,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 		if userPaths[fullPath] || ui.IsIgnored(path) {
 			continue
 		}
-		err = w.Watch(fullPath)
+		err = w.Add(fullPath)
 		if err != nil {
 			w.Close()
 			return nil, fmt.Errorf("unable to watch '%s': %s", path, err)
@@ -74,7 +76,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 		dirPath := filepath.Dir(fullPath)
 		if !userPaths[dirPath] && dirPath != "" {
 			if !renameDirs[dirPath] {
-				err = w.Watch(dirPath)
+				err = w.Add(dirPath)
 				if err != nil {
 					w.Close()
 					return nil, fmt.Errorf("unable to watch rename-watched-only dir '%s': %s", fullPath, err)
@@ -98,9 +100,8 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer Ignorer) {
 	for {
 		select {
-		case ev := <-w.Event:
-			// w.Close causes this.
-			if ev == nil {
+		case ev, ok := <-w.Events:
+			if !ok {
 				return
 			}
 			if ignorer.IsIgnored(ev.Name) {
@@ -110,11 +111,7 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- time.Time, ignorer Ignore
 				log.Printf("filtered file change: %s", ev)
 			}
 			cmdCh <- time.Now()
-		case err := <-w.Error:
-			// w.Close causes this.
-			if err == nil {
-				return
-			}
+		case err := <-w.Errors:
 			log.Println("watch error:", err)
 		}
 	}

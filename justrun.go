@@ -73,7 +73,10 @@ func main() {
 	go waitForInterrupt(sigCh, cmd)
 
 	cmdCh := make(chan time.Time, 100)
-	watch(inputPaths, ignoreFlag, cmdCh)
+	_, err := watch(inputPaths, ignoreFlag, cmdCh)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	wasDelayed := false
 	done := make(chan error) // first instance is unused but needed for now
