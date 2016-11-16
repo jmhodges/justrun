@@ -34,6 +34,9 @@ func TestSimpleWatch(t *testing.T) {
 	defer cleanUp()
 	fs.ChangeContents("foobar")
 	seeChangeContents(fs, ch, "foobar")
+	if runtime.GOOS == "linux" && os.Getenv("TRAVIS") == "true" {
+		seeChangeContents(fs, ch, "foobar")
+	}
 	fs.Create("baz")
 	seeNothing(fs, ch, "creation of baz")
 }
