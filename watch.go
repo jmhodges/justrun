@@ -107,6 +107,7 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- event, ignorer Ignorer) {
 	for {
 		select {
 		case ev, ok := <-w.Events:
+			// Caused by w.Close
 			if !ok {
 				return
 			}
@@ -122,6 +123,10 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- event, ignorer Ignorer) {
 			}
 
 		case err := <-w.Errors:
+			// Caused by w.Close
+			if err == nil {
+				return
+			}
 			log.Println("watch error:", err)
 		}
 	}
