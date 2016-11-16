@@ -41,6 +41,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- event) (*fsnotify.Wat
 		if userPaths[fullPath] || ui.IsIgnored(path) {
 			continue
 		}
+		fmt.Println("watch fullPath", fullPath)
 		err = w.Add(fullPath)
 		if err != nil {
 			w.Close()
@@ -77,6 +78,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- event) (*fsnotify.Wat
 		dirPath := filepath.Dir(fullPath)
 		if !userPaths[dirPath] && dirPath != "" {
 			if !renameDirs[dirPath] {
+				fmt.Println("watch dirPath", dirPath)
 				err = w.Add(dirPath)
 				if err != nil {
 					w.Close()
