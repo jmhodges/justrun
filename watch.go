@@ -70,7 +70,7 @@ func watch(inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) (*fsnotify
 	for fullPath, _ := range userPaths {
 		baseName := filepath.Base(fullPath)
 		if strings.HasPrefix(baseName, ".") {
-			fmt.Println("here with basename")
+			fmt.Println("initial with basename", baseName)
 			includedHiddenFiles[fullPath] = true
 		}
 

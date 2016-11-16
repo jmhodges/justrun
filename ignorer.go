@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -65,6 +66,7 @@ func (si *smartIgnorer) IsIgnored(path string) bool {
 	if strings.HasPrefix(baseName, ".") && !si.includedHiddenFiles[path] {
 		return true
 	}
+	fmt.Println("IsIgnored baseName:", baseName, "path:", path)
 	dirPath := filepath.Dir(path)
 	if si.renameDirs[dirPath] && !si.renameChildren[path] {
 		return true
