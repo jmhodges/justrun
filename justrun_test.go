@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -17,7 +18,7 @@ const waitForMsg = 2 * time.Second
 func TestNoWatchingCreation(t *testing.T) {
 	fs := newFS(t)
 	fs.Create("foobar")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs, []string{fs.Abs("foobar")}, []string{}, ch)
 	defer cleanUp()
 	fs.Create("baz")
@@ -28,11 +29,14 @@ func TestNoWatchingCreation(t *testing.T) {
 func TestSimpleWatch(t *testing.T) {
 	fs := newFS(t)
 	fs.Create("foobar")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs, []string{fs.Abs("foobar")}, []string{fs.Abs("baz")}, ch)
 	defer cleanUp()
 	fs.ChangeContents("foobar")
 	seeChangeContents(fs, ch, "foobar")
+	if runtime.GOOS == "linux" && os.Getenv("TRAVIS") == "true" {
+		seeChangeContents(fs, ch, "foobar")
+	}
 	fs.Create("baz")
 	seeNothing(fs, ch, "creation of baz")
 }
@@ -40,7 +44,7 @@ func TestSimpleWatch(t *testing.T) {
 func TestSimpleDirWatch(t *testing.T) {
 	fs := newFS(t)
 	fs.MkdirAll("simpleDir1")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs, []string{fs.Abs("simpleDir1")}, []string{}, ch)
 	defer cleanUp()
 
@@ -51,7 +55,7 @@ func TestSimpleDirWatch(t *testing.T) {
 func TestCurrentDirWorks(t *testing.T) {
 	fs := newFS(t)
 	fs.Create("foobar")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs, []string{fs.Abs(".")}, nil, ch)
 	defer cleanUp()
 	fs.ChangeContents("foobar")
@@ -65,7 +69,7 @@ func TestIgnoredDir(t *testing.T) {
 	fs := newFS(t)
 	fs.Create("foobar")
 	fs.MkdirAll("existdir/quuxdir")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs, []string{fs.Abs(".")},
 		[]string{
 			fs.Abs("bardir"),
@@ -89,7 +93,7 @@ func TestIgnoredDirOverlap(t *testing.T) {
 	fs := newFS(t)
 	fs.Create("foobar")
 	fs.MkdirAll("existdir/quuxdir")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	// The existdir and existdir/quuxdir cases seem silly but can
 	// happen accidentally in shell globbing. Better to be consistent
 	// about it.
@@ -119,7 +123,7 @@ func TestIgnoredDirOverlap(t *testing.T) {
 func TestNoSubdirRecursionWithoutGlobs(t *testing.T) {
 	fs := newFS(t)
 	fs.MkdirAll("some_dir")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs, []string{fs.Abs(".")}, nil, ch)
 	defer cleanUp()
 
@@ -131,7 +135,7 @@ func TestRenameFile(t *testing.T) {
 	fs := newFS(t)
 
 	fs.Create("foobar")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 
 	cleanUp := watchTest(fs, []string{fs.Abs("foobar")}, []string{}, ch)
 	defer cleanUp()
@@ -144,7 +148,7 @@ func TestRenameDir(t *testing.T) {
 
 	fs.MkdirAll("foodir")
 	fs.Create("foodir/foobar")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 
 	cleanUp := watchTest(fs, []string{fs.Abs("foodir/foobar")}, []string{}, ch)
 	defer cleanUp()
@@ -164,7 +168,7 @@ func TestHiddenFilesHiddenByDefault(t *testing.T) {
 	fs.MkdirAll("hDir2")
 	fs.MkdirAll("hDir3")
 	fs.Create("hDir3/.hiddenAndIgnored")
-	ch := make(chan time.Time, 10)
+	ch := make(chan event, 10)
 	cleanUp := watchTest(fs,
 		[]string{fs.Abs("hDir1/.hidden"), fs.Abs("hDir2")},
 		[]string{fs.Abs("hDir3/.hiddenAndIgnored")},
@@ -173,18 +177,22 @@ func TestHiddenFilesHiddenByDefault(t *testing.T) {
 
 	fs.ChangeContents("hDir1/.hidden")
 	seeChangeContents(fs, ch, "hDir1/.hidden")
+	// TravisCI watches emit more change events than we normally expect.
+	if runtime.GOOS == "linux" && os.Getenv("TRAVIS") == "true" {
+		seeChangeContents(fs, ch, "hDir1/.hidden")
+	}
 	fs.Create("hDir2/.hidden")
 	seeNothing(fs, ch, "no hidden file creation")
 	fs.ChangeContents("hDir3/.hiddenAndIgnored")
 	seeNothing(fs, ch, "no event for changes to hDir3/.hiddenAndIgnored")
 }
 
-func renameTest(fs *fileSystem, ch <-chan time.Time, oldpath, newpath string) {
+func renameTest(fs *fileSystem, ch <-chan event, oldpath, newpath string) {
 	fs.Rename(oldpath, newpath)
 	seeRename(fs, ch, oldpath, newpath)
 }
 
-func seeRename(fs *fileSystem, ch <-chan time.Time, oldpath, newpath string) {
+func seeRename(fs *fileSystem, ch <-chan event, oldpath, newpath string) {
 	select {
 	case <-ch:
 		fs.t.Logf("successful catch of rename ('%s' -> '%s')", oldpath, newpath)
@@ -193,16 +201,16 @@ func seeRename(fs *fileSystem, ch <-chan time.Time, oldpath, newpath string) {
 	}
 }
 
-func seeNothing(fs *fileSystem, ch <-chan time.Time, msg string) {
+func seeNothing(fs *fileSystem, ch <-chan event, msg string) {
 	select {
-	case <-ch:
-		fs.t.Errorf("should not have seen anything but saw: %s", msg)
+	case ev := <-ch:
+		fs.t.Errorf("should not have seen anything but saw %q for %s", ev.Event, msg)
 	case <-time.After(waitForMsg):
 		fs.t.Logf("successfully saw nothing for '%s'", msg)
 	}
 }
 
-func seeCreation(fs *fileSystem, ch <-chan time.Time, path string) {
+func seeCreation(fs *fileSystem, ch <-chan event, path string) {
 	select {
 	case <-ch:
 		fs.t.Logf("successful catch of creation of '%s'", path)
@@ -213,22 +221,22 @@ func seeCreation(fs *fileSystem, ch <-chan time.Time, path string) {
 	}
 }
 
-func seeChangeContents(fs *fileSystem, ch <-chan time.Time, path string) {
+func seeChangeContents(fs *fileSystem, ch <-chan event, path string) {
 	select {
-	case <-ch:
-		fs.t.Logf("successful catch of first event (MODIFY|ATTRIB) for changing contents of '%s'", path)
+	case ev := <-ch:
+		fs.t.Logf("successful catch of first event (%q) for changing contents of '%s'", ev.Event, path)
 	case <-time.After(waitForMsg):
 		fs.t.Errorf("did not see content change of '%s'", path)
 	}
 	select {
-	case <-ch:
-		fs.t.Logf("successful catch of second event (MODIFY) for changing contents of '%s'", path)
+	case ev := <-ch:
+		fs.t.Logf("successful catch of second event (%q) for changing contents of '%s'", ev.Event, path)
 	case <-time.After(waitForMsg):
 		fs.t.Errorf("did not see content change of '%s'", path)
 	}
 }
 
-func watchTest(fs *fileSystem, inputPaths, ignoredPaths []string, cmdCh chan<- time.Time) func() {
+func watchTest(fs *fileSystem, inputPaths, ignoredPaths []string, cmdCh chan<- event) func() {
 	w, err := watch(inputPaths, ignoredPaths, cmdCh)
 	if err != nil {
 		fs.t.Fatalf("unable to run watch: %#v", err)
