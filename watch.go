@@ -112,7 +112,7 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- event, ignorer Ignorer) {
 				continue
 			}
 			if *verbose {
-				log.Printf("filtered file change: %s", ev)
+				log.Printf("unignored file change: %s", ev)
 			}
 			cmdCh <- event{
 				Time:  time.Now(),
