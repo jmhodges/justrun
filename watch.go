@@ -11,7 +11,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// watch watchers the input paths. The returned Watcher should only be used in
+// watch watches the input paths. The returned Watcher should only be used in
 // tests.
 func watch(inputPaths, ignoredPaths []string, cmdCh chan<- event) (*fsnotify.Watcher, error) {
 	// Creates an Ignorer that just ignores file paths the user
