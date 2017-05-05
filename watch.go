@@ -118,14 +118,9 @@ func listenForEvents(w *fsnotify.Watcher, cmdCh chan<- event, ignorer Ignorer) {
 				Time:  time.Now(),
 				Event: ev,
 			}
-		case err, ok := <-w.Errors:
-			if !ok {
-				close(cmdCh)
-				return
-			}
+		case err := <-w.Errors:
 			// w.Close causes this.
 			if err == nil {
-				close(cmdCh)
 				return
 			}
 			log.Println("watch error:", err)

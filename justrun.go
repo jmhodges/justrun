@@ -66,11 +66,7 @@ func main() {
 		argError("no file paths provided to watch")
 	}
 
-	cmd := &cmdReloader{
-		cond:           &sync.Cond{L: new(sync.Mutex)},
-		command:        *command,
-		waitForCommand: *waitForCommand,
-	}
+	cmd := &cmdWrapper{Mutex: new(sync.Mutex), command: *command, cmd: nil}
 
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -83,16 +79,12 @@ func main() {
 	}
 
 	wasDelayed := false
-
-	lastStartTime := time.Now()
-	cmd.Reload()
+	done := make(chan error) // first instance is unused but needed for now
+	lastStartTime, done := reload(cmd, done)
 	tick := time.NewTicker(*delayDur)
 	for {
 		select {
-		case ev, ok := <-cmdCh:
-			if !ok {
-				return
-			}
+		case ev := <-cmdCh:
 			if lastStartTime.After(ev.Time) {
 				continue
 			}
@@ -104,27 +96,79 @@ func main() {
 				continue
 			}
 			wasDelayed = false
-			lastStartTime = time.Now()
-			cmd.Reload()
-			tick.Stop()
+			lastStartTime, done = reload(cmd, done)
 			tick = time.NewTicker(*delayDur)
 		case <-tick.C:
 			if wasDelayed {
 				wasDelayed = false
-				lastStartTime = time.Now()
-				cmd.Reload()
+				lastStartTime, done = reload(cmd, done)
 			}
 		}
 	}
 }
 
-func waitForInterrupt(sigCh chan os.Signal, cmd *cmdReloader) {
-	for range sigCh {
-		go func() {
-			cmd.Terminate()
-			os.Exit(0)
-		}()
+func reload(cmd *cmdWrapper, done chan error) (time.Time, chan error) {
+	if cmd.cmd != nil {
+		// If there's something to shut down, shut it down.
+		shutdownCommand(cmd, done)
 	}
+	lastStartTime := time.Now()
+	return lastStartTime, runCommand(cmd)
+}
+
+func runCommand(cmd *cmdWrapper) chan error {
+	log.Printf("running '%s'\n", *command)
+	err := cmd.Start()
+	if err != nil {
+		log.Printf("command failed: %s", err)
+		return nil
+	}
+	done := make(chan error)
+	if *waitForCommand {
+		err := cmd.Wait()
+		go func() { done <- err }()
+		return done
+	}
+	go func() {
+		err := cmd.Wait()
+		done <- err
+	}()
+	return done
+}
+
+func shutdownCommand(cmd *cmdWrapper, done chan error) {
+	err := cmd.Terminate()
+	if err == syscall.ESRCH {
+		return
+	}
+
+	// Done is sent to after the command's Wait call returns. But it's really a
+	// latency optimization (or spin-loop prevention) over polling the process
+	// with Terminate until the process stops existing (when syscall.ESRCH
+	// will be returned).
+	for err != syscall.ESRCH {
+		select {
+		case <-done:
+			break
+		case <-time.After(300 * time.Millisecond):
+			err = cmd.Terminate()
+		}
+	}
+	msg := "terminating current command"
+	if *verbose {
+		msg += fmt.Sprintf(" %d", cmd.cmd.Process.Pid)
+	}
+	log.Println(msg)
+}
+
+func waitForInterrupt(sigCh chan os.Signal, cmd *cmdWrapper) {
+	<-sigCh
+	done := make(chan error)
+	go func() {
+		done <- cmd.Wait()
+	}()
+	shutdownCommand(cmd, done)
+	os.Exit(0)
 }
 
 type pathsFlag []string
