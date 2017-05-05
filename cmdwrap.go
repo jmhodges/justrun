@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type cmdWrapper struct {
@@ -52,13 +51,13 @@ func (cw *cmdWrapper) Wait() error {
 }
 
 type cmdReloader struct {
+	command        string
 	cond           *sync.Cond
 	waitErr        error
 	waitFinished   bool
 	reloadGen      int
 	waitForCommand bool
 	preventReloads bool
-	command        string
 	cmd            *cmdWrapper
 }
 
@@ -76,8 +75,17 @@ func (cs *cmdReloader) Reload() {
 	}
 
 	if cs.cmd != nil {
+		// Unlock is here to allow terminate to take care of that itself.
+		cs.cond.L.Unlock()
 		cs.terminate()
+		cs.cond.L.Lock()
+		if !cs.waitFinished {
+			panic("previous command run did not complete before it was attempted to be run again")
+		}
 	}
+
+	cs.waitFinished = false
+	cs.waitErr = nil
 
 	log.Printf("running '%s'\n", cs.command)
 	cs.cmd = &cmdWrapper{command: cs.command}
@@ -94,7 +102,7 @@ func (cs *cmdReloader) Reload() {
 		cs.cond.L.Lock()
 		defer cs.cond.L.Unlock()
 		if cs.reloadGen != cmdGen {
-			panic(fmt.Sprintf("justrun: interal assertion failure: want command generation %d, got generation %d. Please file a ticket.", cmdGen, cs.reloadGen))
+			panic(fmt.Sprintf("justrun: internal assertion failure: want command generation %d, got generation %d. Please file a ticket.", cmdGen, cs.reloadGen))
 		}
 		cs.waitErr = err
 		cs.waitFinished = true
@@ -102,7 +110,12 @@ func (cs *cmdReloader) Reload() {
 	}(cs.cmd.cmd, cs.reloadGen)
 
 	if cs.waitForCommand {
-		err := <-cs.waitChan()
+		// Unlock is here to allow the code that furnishes the error returned from the
+		// channel receive to take the lock itself.
+
+		cs.cond.L.Unlock()
+		cs.wait()
+		cs.cond.L.Lock()
 		if err != nil {
 			log.Printf("command finished with error: %s", err)
 		}
@@ -110,54 +123,48 @@ func (cs *cmdReloader) Reload() {
 	return
 }
 
-// Terminate shuts down the command process and silently prevents Reload from
-// actually reloading. It will not return until the Wait of process created by
-// the cmdReloader has finished. This will never return if the process is hung.
+// Terminate shuts down the command process and makes future calls to Reload
+// return without actually reloading the command. It will not return until the
+// Wait of process created by the cmdReloader has finished. This will never
+// return if the process is hung.
 func (cs *cmdReloader) Terminate() {
 	cs.cond.L.Lock()
 	cs.preventReloads = true
-	cs.terminate()
 	cs.cond.L.Unlock()
-	// The read of this channel is deliberately left outside of the lock.
-	<-cs.waitChan()
+	cs.terminate()
 }
 
+// terminate must be called without cs.cond.L being held.
 func (cs *cmdReloader) terminate() {
-	err := cs.cmd.Terminate()
-	if err == syscall.ESRCH {
-		return
-	}
-
-	done := cs.waitChan()
-	// Done is sent to after the command's Wait call returns. But it's really a
-	// latency optimization (or spin-loop prevention) over polling the process
-	// with Terminate until the process stops existing (when syscall.ESRCH
-	// will be returned).
-	for err != syscall.ESRCH {
-		select {
-		case <-done:
-			break
-		case <-time.After(50 * time.Millisecond):
-			err = cs.cmd.Terminate()
-		}
-	}
+	pid := cs.cmd.cmd.Process.Pid
 	msg := "terminating current command"
 	if *verbose {
-		msg += fmt.Sprintf(" %d", cs.cmd.cmd.Process.Pid)
+		msg += fmt.Sprintf(" pid %d", pid)
 	}
 	log.Println(msg)
+
+	cs.cond.L.Lock()
+	defer cs.cond.L.Unlock()
+	err := cs.cmd.Terminate()
+	if *verbose && err != nil && err != syscall.ESRCH {
+		log.Printf("error when attempting to terminate pid %d: %s", pid, err)
+	}
+	cs.cond.L.Unlock()
+	err = cs.wait()
+	cs.cond.L.Lock()
+	if *verbose && err != nil && err != syscall.ESRCH {
+		log.Printf("error in process termination of pid %d: %s", pid, err)
+	}
 }
 
-func (cs *cmdReloader) waitChan() <-chan error {
-	done := make(chan error, 1)
-	go func(done chan<- error) {
-		cs.cond.L.Lock()
-		for !cs.waitFinished {
-			cs.cond.Wait()
-		}
-		err := cs.waitErr
-		cs.cond.L.Unlock()
-		done <- err
-	}(done)
-	return done
+// wait must be called without the cs.cond.L being held in order to allow the
+// cmd.Wait background goroutine a chance to work.
+func (cs *cmdReloader) wait() error {
+	cs.cond.L.Lock()
+	for !cs.waitFinished {
+		cs.cond.Wait()
+	}
+	err := cs.waitErr
+	cs.cond.L.Unlock()
+	return err
 }
