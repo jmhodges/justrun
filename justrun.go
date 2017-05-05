@@ -26,7 +26,7 @@ var (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: justrun -c 'SOME BASH COMMAND' [FILEPATH]*\n")
+	fmt.Fprintf(os.Stderr, "usage: justrun [FILEPATH]*\n -- SOME BASH COMMAND")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -43,11 +43,39 @@ func main() {
 	if *help || *h {
 		argError("help requested")
 	}
-	if len(*command) == 0 {
-		argError("no command given with -c")
+
+	args := flag.Args()
+	trailingCmdStr := ""
+	for i, a := range args {
+		if a == "--" {
+			if len(args) == i+1 {
+				argError("no command given after '--'")
+			}
+			trailingCmdStr = strings.TrimSpace(strings.Join(args[i+1:], " "))
+			args = args[:i]
+			break
+		}
 	}
-	if *stdin && len(flag.Args()) != 0 {
-		argError("expected files to come in over stdin, but got paths '%s' in the commandline", strings.Join(flag.Args(), ", "))
+
+	if *command != "" && trailingCmdStr != "" {
+		argError("command string given in -c (%#v) and as a trailing string behind '--' (%#v)", *command, trailingCmdStr)
+	}
+
+	commandStr := *command
+
+	if trailingCmdStr != "" {
+		commandStr = trailingCmdStr
+	}
+	if *command != "" {
+		commandStr = *command
+	}
+	if len(commandStr) == 0 {
+		argError("no command given with -c or after a trailing '--'")
+	}
+	log.Printf("commandStr %#v", commandStr)
+	log.Println("args", args)
+	if *stdin && len(args) != 0 {
+		argError("expected files to come in over stdin, but got paths '%s' in the commandline", strings.Join(args, ", "))
 	}
 	var inputPaths []string
 	if *stdin {
@@ -59,16 +87,17 @@ func main() {
 			argError("error reading from stdin: %s", sc.Err())
 		}
 	} else {
-		inputPaths = flag.Args()
+		inputPaths = args
 	}
 
+	log.Println("inputPaths", inputPaths)
 	if len(inputPaths) == 0 {
 		argError("no file paths provided to watch")
 	}
 
 	cmd := &cmdReloader{
 		cond:           &sync.Cond{L: new(sync.Mutex)},
-		command:        *command,
+		command:        commandStr,
 		waitForCommand: *waitForCommand,
 	}
 
