@@ -19,7 +19,7 @@ type cmdWrapper struct {
 // sets it as the wrapped command. If exec.Cmd.Start returns an error, the
 // last wrapped cmd will be left in place.
 func (cw *cmdWrapper) Start() error {
-	cmd := exec.Command("bash", "-c", *command)
+	cmd := exec.Command("sh", "-c", *command)
 	// Necessary so that the SIGTERM's in Terminate will traverse down to the
 	// the child processes in the bash command above.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
