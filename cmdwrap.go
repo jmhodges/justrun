@@ -12,6 +12,7 @@ import (
 
 type cmdWrapper struct {
 	command string
+	shell   string
 	cmd     *exec.Cmd
 }
 
@@ -19,7 +20,7 @@ type cmdWrapper struct {
 // sets it as the wrapped command. If exec.Cmd.Start returns an error, the
 // last wrapped cmd will be left in place.
 func (cw *cmdWrapper) Start() error {
-	cmd := exec.Command("sh", "-c", *command)
+	cmd := exec.Command(*shell, "-c", *command)
 	// Necessary so that the SIGTERM's in Terminate will traverse down to the
 	// the child processes in the bash command above.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -52,6 +53,7 @@ func (cw *cmdWrapper) Wait() error {
 
 type cmdReloader struct {
 	command        string
+	shell          string
 	cond           *sync.Cond
 	waitErr        error
 	waitFinished   bool
@@ -88,7 +90,10 @@ func (cs *cmdReloader) Reload() {
 	cs.waitErr = nil
 
 	log.Printf("running '%s'\n", cs.command)
-	cs.cmd = &cmdWrapper{command: cs.command}
+	cs.cmd = &cmdWrapper{
+		command: cs.command,
+		shell:   cs.shell,
+	}
 
 	err := cs.cmd.Start()
 	if err != nil {

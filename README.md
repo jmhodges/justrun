@@ -52,6 +52,7 @@ Usage
       -stdin=false: read list of files to track from stdin, not the command-line
       -v=false: verbose output
       -w=false: wait for the command to finish and do not attempt to kill it
+      -s=bash: shell to run the command
 
 
 Compared to other tools
