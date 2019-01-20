@@ -18,6 +18,7 @@ var (
 	help           = flag.Bool("help", false, "print this help text")
 	h              = flag.Bool("h", false, "print this help text")
 	command        = flag.String("c", "", "command to run when files change in given directories")
+	shell          = flag.String("s", "sh", "shell to run the command")
 	ignoreFlag     pathsFlag
 	stdin          = flag.Bool("stdin", false, "read list of files to track from stdin, not the command-line")
 	waitForCommand = flag.Bool("w", false, "wait for the command to finish and do not attempt to kill it")
@@ -69,6 +70,7 @@ func main() {
 	cmd := &cmdReloader{
 		cond:           &sync.Cond{L: new(sync.Mutex)},
 		command:        *command,
+		shell:          *shell,
 		waitForCommand: *waitForCommand,
 	}
 
