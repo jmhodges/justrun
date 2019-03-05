@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -21,9 +20,7 @@ type cmdWrapper struct {
 // last wrapped cmd will be left in place.
 func (cw *cmdWrapper) Start() error {
 	cmd := exec.Command(*shell, "-c", *command)
-	// Necessary so that the SIGTERM's in Terminate will traverse down to the
-	// the child processes in the bash command above.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.SysProcAttr = sysProcAttr()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -33,18 +30,6 @@ func (cw *cmdWrapper) Start() error {
 	}
 	cw.cmd = cmd
 	return nil
-}
-
-func (cw *cmdWrapper) Terminate() error {
-	if cw.cmd == nil {
-		return errors.New("not started")
-	}
-	// The negation here means to kill, not just the parent pid (which
-	// is the bash shell), but also its children. This means that even
-	// long-lived servers can be gently killed (e.g "-c 'go
-	// build && ./myserver -http=:6000'"). fswatch and other systems
-	// can't do this.
-	return syscall.Kill(-cw.cmd.Process.Pid, syscall.SIGTERM)
 }
 
 func (cw *cmdWrapper) Wait() error {
