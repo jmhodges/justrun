@@ -3,7 +3,7 @@
 	"GoVersion": "go1.7",
 	"GodepVersion": "v79",
 	"Packages": [
-		"."
+		"./..."
 	],
 	"Deps": [
 		{
@@ -13,7 +13,11 @@
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",
-			"Rev": "9ccfe848b9db8435a24c424abbc07a921adf1df5"
+			"Rev": "eda9bb28ed513021f3e6a2a361031adc3d8a6301"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/windows",
+			"Rev": "eda9bb28ed513021f3e6a2a361031adc3d8a6301"
 		}
 	]
 }
