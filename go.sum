@@ -1,0 +1,4 @@
+github.com/fsnotify/fsnotify v1.4.3-0.20170329110642-4da3e2cfbabc h1:omfZI1v/Bu4YEatmRAYKISWA95u6XiN4Zorz/JPKCZA=
+github.com/fsnotify/fsnotify v1.4.3-0.20170329110642-4da3e2cfbabc/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
+golang.org/x/sys v0.0.0-20170427041856-9ccfe848b9db h1:znurcNjtwV7XblDOBERYCP1TUjpwbp8bi3Szx8gbNBE=
+golang.org/x/sys v0.0.0-20170427041856-9ccfe848b9db/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
