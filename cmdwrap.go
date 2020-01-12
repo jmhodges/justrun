@@ -139,6 +139,19 @@ func (cs *cmdReloader) Terminate() {
 	cs.terminate()
 }
 
+func isTerminated(err error) bool {
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		return false
+	}
+	// taken from exec.ExitError.Error(), which calls os.ProcessState.String()
+	status := exitErr.ProcessState.Sys().(syscall.WaitStatus)
+	if !status.Signaled() {
+		return false
+	}
+	return status.Signal() == syscall.SIGTERM
+}
+
 // terminate must be called without cs.cond.L being held.
 func (cs *cmdReloader) terminate() {
 	pid := cs.cmd.cmd.Process.Pid
@@ -157,7 +170,7 @@ func (cs *cmdReloader) terminate() {
 	cs.cond.L.Unlock()
 	err = cs.wait()
 	cs.cond.L.Lock()
-	if *verbose && err != nil && err != syscall.ESRCH {
+	if *verbose && err != nil && err != syscall.ESRCH && !isTerminated(err) {
 		log.Printf("error in process termination of pid %d: %s", pid, err)
 	}
 }
