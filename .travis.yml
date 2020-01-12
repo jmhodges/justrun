@@ -1,15 +1,12 @@
 language: go
 go:
-  - 1.13.x
-
+- 1.13.3
 branches:
   only:
-    - master
-    - /^test_/
-    - /^test-/
-
+  - master
+  - /^test_/
+  - /^test-/
 install:
-  - go test -i . # Mostly to avoid Travis's default `go get`
-
+- go test -i .
 script:
-  - go test -v .
+- go test -v .
