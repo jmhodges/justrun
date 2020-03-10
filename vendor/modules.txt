@@ -1,4 +1,4 @@
-# github.com/fsnotify/fsnotify v1.4.8-0.20191012010759-4bf2d1fec783
+# github.com/fsnotify/fsnotify v1.4.8
 github.com/fsnotify/fsnotify
 # golang.org/x/sys v0.0.0-20191005200804-aed5e4c7ecf9
 golang.org/x/sys/unix
