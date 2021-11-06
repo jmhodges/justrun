@@ -34,7 +34,9 @@ func TestSimpleWatch(t *testing.T) {
 	defer cleanUp()
 	fs.ChangeContents("foobar")
 	seeChangeContents(fs, ch, "foobar")
-	if runtime.GOOS == "linux" && os.Getenv("TRAVIS") == "true" {
+	// GitHub Actions watches will emit two, not one, WRITE event on a new
+	// directory's creation.
+	if runtime.GOOS == "linux" && os.Getenv("CI") == "true" {
 		seeChangeContents(fs, ch, "foobar")
 	}
 	fs.Create("baz")
@@ -177,8 +179,9 @@ func TestHiddenFilesHiddenByDefault(t *testing.T) {
 
 	fs.ChangeContents("hDir1/.hidden")
 	seeChangeContents(fs, ch, "hDir1/.hidden")
-	// TravisCI watches emit more change events than we normally expect.
-	if runtime.GOOS == "linux" && os.Getenv("TRAVIS") == "true" {
+	// GitHub Actions watches will emit two, not one, WRITE event on a new
+	// directory's creation.
+	if runtime.GOOS == "linux" && os.Getenv("CI") == "true" {
 		seeChangeContents(fs, ch, "hDir1/.hidden")
 	}
 	fs.Create("hDir2/.hidden")
