@@ -19,7 +19,7 @@ option (`-i`) wisely. If not, you'll accidentally watch files that
 your command touch, and put your commands into an infinite loop.
 
 Justrun does kill the child processes of the bash command run by it to
-end the lifecycles of long-lived (that is, server) processes. If want
+end the lifecycles of long-lived (that is, server) processes. If you want
 justrun to wait for the commands to finish before checking for more
 filesystem changes, add the `-w` argument to the commandline.
 
