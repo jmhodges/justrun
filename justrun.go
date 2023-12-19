@@ -74,7 +74,7 @@ func main() {
 		waitForCommand: *waitForCommand,
 	}
 
-	sigCh := make(chan os.Signal)
+	sigCh := make(chan os.Signal, 10)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go waitForInterrupt(sigCh, cmd)
 

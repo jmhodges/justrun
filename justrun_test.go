@@ -4,7 +4,6 @@ package main
 
 import (
 	"crypto/rand"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -252,7 +251,7 @@ func watchTest(fs *fileSystem, inputPaths, ignoredPaths []string, cmdCh chan<- e
 }
 
 func newFS(t *testing.T) *fileSystem {
-	name, err := ioutil.TempDir("", "justrun_tests_")
+	name, err := os.MkdirTemp("", "justrun_tests_")
 	if err != nil {
 		t.Fatalf("unable to create temporary directory")
 	}
