@@ -1,6 +1,6 @@
 module github.com/jmhodges/justrun
 
-go 1.21
+go 1.26.3
 
 require github.com/fsnotify/fsnotify v1.9.0
 
